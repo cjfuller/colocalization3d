@@ -1,0 +1,49 @@
+<project name="Colocalization3D" default="dist" basedir=".">
+	<property name="srcdir" location="src"/>
+	<property name="builddir" location="build"/>
+	<property name="distdir" location="dist"/>
+	<property name="docdir" location="doc"/>
+	<property name="IAT_libdir" location="${user.home}/git/ImageAnalysisTools/lib"/>
+	<property name="IAT_distdir" location="${user.home}/git/ImageAnalysisTools/dist"/>
+	
+	
+	<path id="Colocalization3D.classpath">
+		<fileset dir="${IAT_distdir}">
+			<include name="*.jar"/>
+		</fileset>
+	</path>
+	
+	<target name="initialize">
+		<mkdir dir="${builddir}"/>
+		<mkdir dir="${distdir}"/>
+	</target>
+	
+	<target name="compile" depends="initialize" description="compile the source">
+		<javac srcdir="${srcdir}" destdir="${builddir}" debug="true" includeantruntime="false">
+			<classpath refid="Colocalization3D.classpath"/>
+		</javac>
+	</target>
+	
+	<target name="dist" depends="compile" description="build the jar file">
+		<jar jarfile="${distdir}/Colocalization3D.jar" basedir="build">
+			<zipgroupfileset dir="${IAT_distdir}" includes="*.jar"/>
+			<manifest>
+				<attribute name="Main-Class" value="edu.stanford.cfuller.colocalization3d.Colocalization3DMain"/>
+			</manifest>
+			
+		</jar>
+	</target>
+	
+	<target name="doc">
+		<mkdir dir="${docdir}"/>
+		<javadoc sourcepath="${srcdir}" destdir="${docdir}">
+			<classpath refid="Colocalization3D.classpath"/>
+		</javadoc>
+	</target>
+	
+	<target name="clean" description="delete all build products">
+		<delete dir="${builddir}"/>
+		<delete dir="${distdir}"/>
+	</target>
+	
+</project>
