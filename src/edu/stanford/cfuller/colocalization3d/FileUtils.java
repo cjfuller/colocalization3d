@@ -24,6 +24,7 @@
 
 package edu.stanford.cfuller.colocalization3d;
 
+import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
 import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
 
 
@@ -35,7 +36,7 @@ public class FileUtils {
 	 * @return 		A String array containing the directory names.
 	 */
 	public static String[] getSetOfDirnames(ParameterDictionary p) {
-		//TODO: implementation
+		//TODO: implementation 
 		return null;
 	}
 	
@@ -68,5 +69,18 @@ public class FileUtils {
 		//TODO: implemenation
 		return null;
 	}
+	
+	/**
+	 * Writes position data from ImageObjects that have been fitted to disk.
+	 * 
+	 * @param objects The list of ImageObjects that have been fitted and are ready to write.
+	 * @param p A {@link ParameterDictionary } specifying the location to which the position data will be written.
+	 */
+	public static void writeFittedImageObjectsToDisk(java.util.List<ImageObject> objects, ParameterDictionary p) {
+		/*
+			TODO implementation
+		*/
+	}
+	
 	
 }

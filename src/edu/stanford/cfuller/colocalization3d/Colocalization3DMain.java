@@ -21,12 +21,15 @@
  * SOFTWARE.
  * 
  * ***** END LICENSE BLOCK ***** */
-
 package edu.stanford.cfuller.colocalization3d;
 
 import java.io.File;
 import java.util.List;
 
+import edu.stanford.cfuller.colocalization3d.correction.Correction;
+import edu.stanford.cfuller.colocalization3d.correction.PositionCorrector;
+import edu.stanford.cfuller.colocalization3d.fitting.DistributionFitter;
+import edu.stanford.cfuller.colocalization3d.fitting.P3DFitter;
 import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
 import edu.stanford.cfuller.imageanalysistools.image.Histogram;
 import edu.stanford.cfuller.imageanalysistools.image.Image;
@@ -39,14 +42,14 @@ public class Colocalization3DMain {
 	static final int DEFAULT_THREAD_WAIT_MS = 50;
 	
 	/*
-	Required list of parameters:
+	Required parameters:
 	*/
 	
 	static final String DIRNAME_PARAM = "dirname_set";
 	static final String BASENAME_PARAM = "basefilename_set";
 	
 	/*
-	Optional list of parameters:
+	Optional parameters:
 	*/
 	
 	static final String PRECOMPUTED_POS_PARAM = "precomputed_position_data";
@@ -57,8 +60,6 @@ public class Colocalization3DMain {
 	protected ParameterDictionary parameters;
 	
 	private FitFailureStatistics failures;
-	
-	
 	
 	public Colocalization3DMain() {
 		this.failures = new FitFailureStatistics();
@@ -204,8 +205,7 @@ public class Colocalization3DMain {
 		
 		return false;
 	}
-	
-	
+		
 	public void go(Initializer in) {
 		//initialize parameters
 		
@@ -237,12 +237,30 @@ public class Colocalization3DMain {
 			
 		}
 		
+		//write the objects and their positions to disk
+		
+		FileUtils.writeFittedImageObjectsToDisk(imageObjects, this.parameters);
+		
+		//get a correction, either by making one or reading from disk
+		
+		PositionCorrector pc = new PositionCorrector(this.parameters);
+		
+		Correction c = pc.getCorrection(imageObjects);
+		
+		//apply the correction, removing objects that cannot be corrected
+		
+		pc.applyCorrection(c, imageObjects);
+						
+		//fit the distribution of separations
+		
+		DistributionFitter df = new P3DFitter(this.parameters);
+		
+		df.fit(imageObjects);
+		
+		//output plots and information
+		
 	}
-	
-	
-	
-	
-	
+
 	public static void main(String[] args) {
 		
 		System.out.println("Hello, world!");
