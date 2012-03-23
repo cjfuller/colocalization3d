@@ -38,6 +38,8 @@ import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
 
 public class Colocalization3DMain {
 	
+	public static final String LOGGER_NAME= "edu.stanford.cfuller.colocalization3d";
+	
 	static final int DEFAULT_MAX_THREADS = 4;
 	static final int DEFAULT_THREAD_WAIT_MS = 50;
 	
@@ -74,15 +76,10 @@ public class Colocalization3DMain {
 	 */
 	protected List<ImageObject> loadExistingPositionData() {
 		
-		/*
-			TODO implementation 
-		*/
-		
 		if (this.parameters.hasKeyAndTrue(PRECOMPUTED_POS_PARAM) && (new File(FileUtils.getPositionDataFilename(this.parameters))).exists()) {
+
+			return FileUtils.readPositionData(FileUtils.getPositionDataFilename(this.parameters));
 			
-			//load it
-		} else {
-			return null;
 		}
 		
 		return null;
@@ -107,8 +104,8 @@ public class Colocalization3DMain {
 	/**
 	 * Loads a mask specified by an ImageAndMaskSet.
 	 * 
-	 * @param toLoad an {@link ImageAndMaskSet } specifying the mask that will be loaded.
-	 * @return an {@link Image } read from the specified location.
+	 * @param toLoad an {@link ImageAndMaskSet} specifying the mask that will be loaded.
+	 * @return an {@link Image} read from the specified location.
 	 */
 	protected Image loadMaskFromSet(ImageAndMaskSet toLoad) {
 		
@@ -154,11 +151,11 @@ public class Colocalization3DMain {
 		
 		for (int i = 1; i < maxRegionId; i++) {
 		
-			ImageObject obj = new edu.stanford.cfuller.imageanalysistools.fitting.GaussianImageObjectWithCovariance(i, new ReadOnlyImage(im), new ReadOnlyImage(mask), this.parameters);
+			ImageObject obj = new edu.stanford.cfuller.imageanalysistools.fitting.GaussianImageObject(i, new ReadOnlyImage(im), new ReadOnlyImage(mask), this.parameters);
 		
 			obj.setImageID(iams.getImageFilename());
 		
-			FittingThread nextThread = new FittingThread(); //TODO: change constructor
+			FittingThread nextThread = new FittingThread(obj, this.parameters); //TODO: change constructor
 			
 			try {
 				while(startedThreads.size() >= maxThreadCount) {
@@ -274,16 +271,36 @@ public class Colocalization3DMain {
 	}
 	
 	protected static class FittingThread extends Thread {
-		/*
-			TODO implementation
-		*/
+		
+		ParameterDictionary p;
+		ImageObject toFit;
+		
+		public FittingThread(ImageObject toFit, ParameterDictionary p) {
+			this.toFit = toFit;
+			this.p = p;
+		}
 		
 		public ImageObject getFitObject() {
-			/*
-				TODO implementation
-			*/
-			return null;
 			
+			return this.toFit;
+			
+		}
+		
+		@Override
+		public void run() {
+			try {
+				this.toFit.fitPosition(this.p);
+			} 	catch (org.apache.commons.math.optimization.OptimizationException e) {
+				e.printStackTrace();
+                java.util.logging.Logger.getLogger(LOGGER_NAME).warning("exception while fitting in image: " + this.toFit.getImageID() + ".  Skipping and continuing.");
+            } catch (org.apache.commons.math.MathRuntimeException e) {
+                e.printStackTrace();
+                java.util.logging.Logger.getLogger(LOGGER_NAME).warning("exception while fitting in image: " + this.toFit.getImageID() + ".  Skipping and continuing.");
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+                java.util.logging.Logger.getLogger(LOGGER_NAME).warning("exception while fitting in image: " + this.toFit.getImageID() + ".  Skipping and continuing.");
+            }
+
 		}
 		
 	}

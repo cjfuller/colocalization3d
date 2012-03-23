@@ -24,6 +24,8 @@
 
 package edu.stanford.cfuller.colocalization3d;
 
+import java.util.List;
+
 import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
 import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
 
@@ -57,6 +59,19 @@ public class FileUtils {
 	 */
 	public static String getPositionDataFilename(ParameterDictionary p) {
 		//TODO: implementation
+		return null;
+	}
+	
+	
+	/**
+	 * Reads fitted position data stored in ImageObjects from the file specified by the supplied name.
+	 * @param filename	a String specifying the full path to the file containing the position data.
+	 * @return a List<ImageObject> containing the ImageObjects (and their position fit data).
+	 */
+	public static List<ImageObject> readPositionData(String filename) {
+		/*
+			TODO implementation
+		*/
 		return null;
 	}
 	
