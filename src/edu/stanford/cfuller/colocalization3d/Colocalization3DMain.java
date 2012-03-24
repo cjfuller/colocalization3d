@@ -30,6 +30,8 @@ import edu.stanford.cfuller.colocalization3d.correction.Correction;
 import edu.stanford.cfuller.colocalization3d.correction.PositionCorrector;
 import edu.stanford.cfuller.colocalization3d.fitting.DistributionFitter;
 import edu.stanford.cfuller.colocalization3d.fitting.P3DFitter;
+import edu.stanford.cfuller.imageanalysistools.filter.Filter;
+import edu.stanford.cfuller.imageanalysistools.filter.ImageSubtractionFilter;
 import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
 import edu.stanford.cfuller.imageanalysistools.image.Histogram;
 import edu.stanford.cfuller.imageanalysistools.image.Image;
@@ -56,6 +58,7 @@ public class Colocalization3DMain {
 	
 	static final String PRECOMPUTED_POS_PARAM = "precomputed_position_data";
 	static final String THREAD_COUNT_PARAM = "max_threads";
+	static final String DARK_IMAGE_PARAM = "darkfield_image";
 	
 	//TODO: organize parameters
 		
@@ -94,11 +97,22 @@ public class Colocalization3DMain {
 	 * @return an {@link Image} read from the specfied location.
 	 */
 	protected Image loadAndCorrectImageFromSet(ImageAndMaskSet toLoad) {
-		/*
-			TODO implementation
-		*/
+	
+		Image theImage = FileUtils.loadImage(toLoad.getImageFilename());
 		
-		return null;
+		if (this.parameters.hasKey(DARK_IMAGE_PARAM)) {
+			
+			Image dark = FileUtils.loadImage(this.parameters.getValueForKey(DARK_IMAGE_PARAM));
+			
+			Filter isf = new ImageSubtractionFilter();
+			
+			isf.setReferenceImage(dark);
+			isf.apply(theImage);
+			
+		}
+		
+		return theImage;
+		
 	}
 	
 	/**

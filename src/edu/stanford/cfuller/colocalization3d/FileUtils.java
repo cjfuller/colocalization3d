@@ -27,6 +27,7 @@ package edu.stanford.cfuller.colocalization3d;
 import java.util.List;
 
 import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
+import edu.stanford.cfuller.imageanalysistools.image.Image;
 import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
 
 
@@ -72,6 +73,20 @@ public class FileUtils {
 		/*
 			TODO implementation
 		*/
+		return null;
+	}
+	
+	/**
+	 * Loads an image from the specified filename.
+	 * @param filename A string containing the filename from which to load the image.
+	 * @return an Image loaded from the file.
+	 */
+	public static Image loadImage(String filename) {
+		try {
+			return (new edu.stanford.cfuller.imageanalysistools.image.io.ImageReader()).read(filename);
+		} catch (java.io.IOException e) {
+			java.util.logging.Logger.getLogger(Colocalization3DMain.LOGGER_NAME).severe("Exception encountered while reading image from " + filename + ": " + e.getMessage());
+		}
 		return null;
 	}
 	
