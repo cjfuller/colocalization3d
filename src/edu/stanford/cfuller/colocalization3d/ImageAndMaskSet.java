@@ -42,4 +42,19 @@ public class ImageAndMaskSet {
 		
 	}
 	
+	/**
+	 * Gets the filename of the mask associated with this image and mask set.
+	 * 
+	 * @return a string containing the absolute filename of the mask.
+	 */
+	public String getMaskFilename() {
+		
+		/*
+			TODO implementation
+		*/
+		
+		return null;
+		
+	}
+	
 }

@@ -32,9 +32,11 @@ import edu.stanford.cfuller.colocalization3d.fitting.DistributionFitter;
 import edu.stanford.cfuller.colocalization3d.fitting.P3DFitter;
 import edu.stanford.cfuller.imageanalysistools.filter.Filter;
 import edu.stanford.cfuller.imageanalysistools.filter.ImageSubtractionFilter;
+import edu.stanford.cfuller.imageanalysistools.fitting.FitParameters;
 import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
 import edu.stanford.cfuller.imageanalysistools.image.Histogram;
 import edu.stanford.cfuller.imageanalysistools.image.Image;
+import edu.stanford.cfuller.imageanalysistools.image.ImageCoordinate;
 import edu.stanford.cfuller.imageanalysistools.image.ReadOnlyImage;
 import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
 
@@ -51,6 +53,11 @@ public class Colocalization3DMain {
 	
 	static final String DIRNAME_PARAM = "dirname_set";
 	static final String BASENAME_PARAM = "basefilename_set";
+	static final String BORDER_PARAM = "im_border_size";
+	static final String Z_BOX_SIZE_PARAM = "half_z_size";
+	static final String DETERMINE_CORRECTION_PARAM = "determine_correction";
+	static final String PIXELSIZE_PARAM = "pixelsize_nm";
+	static final String SECTIONSIZE_PARAM = "z_sectionsize_nm";
 	
 	/*
 	Optional parameters:
@@ -58,7 +65,19 @@ public class Colocalization3DMain {
 	
 	static final String PRECOMPUTED_POS_PARAM = "precomputed_position_data";
 	static final String THREAD_COUNT_PARAM = "max_threads";
-	static final String DARK_IMAGE_PARAM = "darkfield_image";
+	static final String DARK_IMAGE_PARAM = "darkfield_image"; //TODO: change this parameter's name
+	static final String R2_PARAM = "residual_cutoff";
+	static final String MAX_LEVEL_PARAM = "max_greylevel_cutoff";
+	static final String DIST_CUTOFF_PARAM = "distance_cutoff";
+	static final String ERROR_CUTOFF_PARAM = "fit_error_cutoff";
+	
+	/**
+	 * Automatically filled parameters:
+	 */
+	
+	static final String CAMERA_SIZE_PARAM = "camera_size";
+	static final String NUM_PLANES_PARAM = "numplanes";
+	
 	
 	//TODO: organize parameters
 		
@@ -123,17 +142,32 @@ public class Colocalization3DMain {
 	 */
 	protected Image loadMaskFromSet(ImageAndMaskSet toLoad) {
 		
-		/*
-			TODO implementation
-		*/
+		Image theMask = FileUtils.loadImage(toLoad.getMaskFilename());
 		
-		return null;
+		return theMask;
 	}
 	
 	private void checkAllRunningThreadsAndRemoveFinished(List<FittingThread> started, List<FittingThread> finished) {
-		/*
-			TODO implementation
-		*/
+		
+		List<FittingThread> toMove = new java.util.ArrayList<FittingThread>();
+		
+		for (FittingThread ft : started) {
+			try {
+				ft.join(DEFAULT_THREAD_WAIT_MS);
+			} catch (InterruptedException e) {
+				/*
+					TODO log something
+				*/
+			}
+			
+			if (! ft.isAlive()) {
+				toMove.add(ft);
+			}
+		}
+		
+		started.removeAll(toMove);
+		finished.addAll(toMove);
+		
 	}
 	
 	/**
@@ -169,7 +203,7 @@ public class Colocalization3DMain {
 		
 			obj.setImageID(iams.getImageFilename());
 		
-			FittingThread nextThread = new FittingThread(obj, this.parameters); //TODO: change constructor
+			FittingThread nextThread = new FittingThread(obj, this.parameters);
 			
 			try {
 				while(startedThreads.size() >= maxThreadCount) {
@@ -210,11 +244,205 @@ public class Colocalization3DMain {
 	}
 	
 	protected boolean fitParametersOk(ImageObject toCheck) {
-		/*
-			TODO implementation
-		*/
 		
-		return false;
+		/**
+		 * Things to check:
+		 * 1.  finished fitting
+		 * 2.  R^2 value (replace this eventually with a better metric since I'm not least squares fitting...)
+		 * 3.  too close to image edge in x, y, or z
+		 * 4.  objects that are at or very near to camera saturation
+		 * 5.  separation between channel is reasonable (i.e. on a scale that is within the known size of the complex of interest) -- occasionally different objects or schmutz are fit together and give wacky results
+		 * 6.  theoretical fitting error
+		 */
+		
+		//finished fitting
+		if (!toCheck.finishedFitting()) return false;
+		
+		//R2 value
+		
+		if (! checkR2Ok(toCheck)) return false;
+		
+		//image edge proximity
+		
+		if (! checkEdgesOk(toCheck)) return false;
+		
+		//saturation
+		
+		if (! checkSaturationOk(toCheck)) return false;
+		
+		//reasonable separation
+		
+		if (! checkSeparationOk(toCheck)) return false;
+		
+		//fitting error
+		
+		if (! checkFittingErrorOk(toCheck)) return false;
+		
+		return true;
+	}
+	
+	protected boolean checkR2Ok(ImageObject obj) {
+
+		if (! this.parameters.hasKey(R2_PARAM)) {return true;}
+
+		double R2Cutoff = this.parameters.getDoubleValueForKey(R2_PARAM);
+		
+		int c = 0;
+		
+		for (double r2 : obj.getFitR2ByChannel()) {
+			if (r2 < R2Cutoff) {
+				/*
+					TODO log something
+				*/
+				
+				/*
+					TODO increment fit failure
+				*/
+				
+				return false;
+			}
+			++c;
+		}
+		return true;
+	}
+		
+	protected boolean checkEdgesOk(ImageObject obj) {
+		//image edges
+		double eps = 0.1; // a little wiggle room
+		double cameraSizeX = this.parameters.getDoubleValueForKey(CAMERA_SIZE_PARAM);
+		double cameraSizeY = cameraSizeX;
+		double numplanes = this.parameters.getDoubleValueForKey(NUM_PLANES_PARAM);
+		double imageBorderSize = this.parameters.getDoubleValueForKey(BORDER_PARAM);
+		double halfZSize = this.parameters.getDoubleValueForKey(Z_BOX_SIZE_PARAM);
+		
+		if (!this.parameters.getBooleanValueForKey(DETERMINE_CORRECTION_PARAM)) {
+			imageBorderSize *= 4;  //this ensures that the correction covers the area of the objects of interest without too many problematic edge effects;
+		}
+		
+		for (FitParameters fp : obj.getFitParametersByChannel()) {
+			double pos_x = fp.getPosition(ImageCoordinate.X);
+			double pos_y = fp.getPosition(ImageCoordinate.Y);
+			double pos_z = fp.getPosition(ImageCoordinate.Z);
+		
+			if (pos_x - eps > cameraSizeX - imageBorderSize ||
+				pos_x + eps <= imageBorderSize ||
+				pos_y - eps > cameraSizeY - imageBorderSize ||
+				pos_y + eps <= imageBorderSize ||
+				pos_z - eps > numplanes - halfZSize ||
+				pos_z + eps <= halfZSize) {
+					/*
+						TODO log something
+					*/
+					
+					/*
+						TODO increment fit failures
+					*/
+					return false;
+				}
+		
+		}
+		
+		
+		
+		return true;
+	}
+	
+	protected boolean checkSaturationOk(ImageObject obj) {
+		
+		if (this.parameters.hasKey(MAX_LEVEL_PARAM)) {
+			obj.boxImages();
+			
+			double cutoff = this.parameters.getDoubleValueForKey(MAX_LEVEL_PARAM);
+			
+			for (ImageCoordinate ic : obj.getParent()) {
+				if (obj.getParent().getValue(ic) > cutoff) {
+					/*
+						TODO log something
+					*/
+					/*
+						TODO increment fit failures
+					*/
+					obj.unboxImages();
+					return false;
+				}
+			}
+			
+			obj.unboxImages();
+		}
+		
+		return true;
+	}
+		
+	protected boolean checkSeparationOk(ImageObject obj) {
+		
+		if (! this.parameters.hasKey(DIST_CUTOFF_PARAM)) {return true;}
+		
+		int numberOfChannels = obj.getFitParametersByChannel().size();
+		
+		double xy_pixelsize_2 = this.parameters.getDoubleValueForKey(PIXELSIZE_PARAM);
+		
+		xy_pixelsize_2 *= xy_pixelsize_2;
+		
+		double z_sectionsize_2 = this.parameters.getDoubleValueForKey(SECTIONSIZE_PARAM);
+		
+		z_sectionsize_2 *= z_sectionsize_2;
+		
+		for (int i = 0; i < numberOfChannels; i++) {
+			for (int j = 0; j < numberOfChannels; j++) {
+				if (i == j) continue;
+				
+				FitParameters fp1 = obj.getFitParametersByChannel().get(i);
+				FitParameters fp2 = obj.getFitParametersByChannel().get(j);
+				
+				double ijdist = xy_pixelsize_2 * Math.pow(fp1.getPosition(ImageCoordinate.X) - fp2.getPosition(ImageCoordinate.X),2) + xy_pixelsize_2 * Math.pow(fp1.getPosition(ImageCoordinate.Y) - fp2.getPosition(ImageCoordinate.Y),2) + z_sectionsize_2 * Math.pow(fp1.getPosition(ImageCoordinate.Z) - fp2.getPosition(ImageCoordinate.Z),2);
+			
+				if (ijdist > this.parameters.getDoubleValueForKey(DIST_CUTOFF_PARAM)) {
+				
+					/*
+						TODO log something
+					*/
+					
+					/*
+						TODO increment fit failures
+					*/
+					
+					return false;
+				}
+			
+			}
+		}
+		
+		return true;
+	}
+		
+	protected boolean checkFittingErrorOk(ImageObject obj) {
+		
+		if (! this.parameters.hasKey(ERROR_CUTOFF_PARAM)) {return true;}
+		
+		double totalError = 0;
+		
+		for (double d : obj.getFitErrorByChannel()) {
+			totalError += d*d;
+		}
+		
+		totalError = Math.sqrt(totalError);
+		
+		if (totalError > this.parameters.getDoubleValueForKey(ERROR_CUTOFF_PARAM) || Double.isNaN(totalError)) {
+			
+			/*
+				TODO log something
+			*/
+			
+			/*
+				TODO increment fit failures
+			*/
+			
+			return false;
+			
+		}
+		
+		
+		return true;
 	}
 		
 	public void go(Initializer in) {
@@ -269,6 +497,10 @@ public class Colocalization3DMain {
 		df.fit(imageObjects);
 		
 		//output plots and information
+		
+		/*
+			TODO output
+		*/
 		
 	}
 
