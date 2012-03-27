@@ -30,6 +30,16 @@ import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
 import edu.stanford.cfuller.imageanalysistools.image.Image;
 import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLOutputFactory;
@@ -51,7 +61,7 @@ public class FileUtils {
 	
 	
 	
-	static final String postion_xml_extension = "_position_data.xml";
+	static final String position_xml_extension = "_position_data.xml";
 
 	
 	/**
@@ -85,13 +95,13 @@ public class FileUtils {
 	
 	
 	/**
-	* Reads fitted position data stored in ImageObjects from the file specified by the supplied name.
-	* @param filename	a String specifying the full path to the file containing the position data.
+	* Reads fitted position data stored in ImageObjects specified by the given parameters.
+	* @param p	a ParameterDictionary specifying the full path to the file containing the position data.
 	* @return a List<ImageObject> containing the ImageObjects (and their position fit data).
 	* @throws IOException              If the objects cannot be read from disk.
 	* @throws ClassNotFoundException   If the file does not contain data for ImageObjects in the correct format.
 	*/
-	public static Vector<ImageObject> readPositionData(String filename) throws IOException, ClassNotFoundException {
+	public static List<ImageObject> readPositionData(ParameterDictionary p) throws IOException, ClassNotFoundException {
 
 		String filename = FileUtils.getPositionDataFilename(p);
 
@@ -102,7 +112,7 @@ public class FileUtils {
 		XMLStreamReader xsr = null;
 		String encBinData = null;
 
-		Vector<ImageObject> output = new Vector<ImageObject>();
+		List<ImageObject> output = new java.util.ArrayList<ImageObject>();
 
 		HexBinaryAdapter hba = new HexBinaryAdapter();
 
@@ -191,7 +201,7 @@ public class FileUtils {
 	 * @param p A {@link ParameterDictionary } specifying the location to which the position data will be written.
 	 * @throws IOException      If the objects cannot be written.
 	 */
-	public static void writeFittedImageObjectsToDisk(java.util.List<ImageObject> objects, ParameterDictionary p) {
+	public static void writeFittedImageObjectsToDisk(List<ImageObject> objects, ParameterDictionary p) throws IOException {
 		
 		String filename = FileUtils.getPositionDataFilename(p);
 		
@@ -207,7 +217,7 @@ public class FileUtils {
 			xsw.writeStartElement("root");
 			xsw.writeCharacters("\n");
 			
-			for (ImageObject i : imageObjects) {
+			for (ImageObject i : objects) {
 				i.writeToXML(xsw);
 			}
 			

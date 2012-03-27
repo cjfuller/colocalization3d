@@ -27,6 +27,12 @@ package edu.stanford.cfuller.colocalization3d;
 public class ImageAndMaskSet {
 
 
+	public ImageAndMaskSet(String image, String mask) {
+		/*
+			TODO implementation
+		*/
+	}
+
 	/**
 	 * Gets the filename of the image associated with this image and mask set.
 	 * 

@@ -99,9 +99,17 @@ public class Colocalization3DMain {
 	protected List<ImageObject> loadExistingPositionData() {
 		
 		if (this.parameters.hasKeyAndTrue(PRECOMPUTED_POS_PARAM) && (new File(FileUtils.getPositionDataFilename(this.parameters))).exists()) {
-
-			return FileUtils.readPositionData(FileUtils.getPositionDataFilename(this.parameters));
-			
+			try {
+				return FileUtils.readPositionData(FileUtils.getPositionDataFilename(this.parameters));
+			} catch (java.io.IOException e) {
+				/*
+					TODO Log something
+				*/
+			} catch (ClassNotFoundException e) {
+				/*
+					TODO Log something
+				*/
+			}
 		}
 		
 		return null;
@@ -499,7 +507,7 @@ public class Colocalization3DMain {
 		
 		DistributionFitter df = new P3DFitter(this.parameters);
 		
-		df.fit(imageObjects);
+		df.fit(imageObjects, null);
 		
 		//output plots and information
 		
