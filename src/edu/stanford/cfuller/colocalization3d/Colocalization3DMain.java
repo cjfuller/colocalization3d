@@ -100,7 +100,7 @@ public class Colocalization3DMain {
 		
 		if (this.parameters.hasKeyAndTrue(PRECOMPUTED_POS_PARAM) && (new File(FileUtils.getPositionDataFilename(this.parameters))).exists()) {
 			try {
-				return FileUtils.readPositionData(FileUtils.getPositionDataFilename(this.parameters));
+				return FileUtils.readPositionData(this.parameters);
 			} catch (java.io.IOException e) {
 				/*
 					TODO Log something
@@ -490,9 +490,13 @@ public class Colocalization3DMain {
 		}
 		
 		//write the objects and their positions to disk
-		
-		FileUtils.writeFittedImageObjectsToDisk(imageObjects, this.parameters);
-		
+		try {
+			FileUtils.writeFittedImageObjectsToDisk(imageObjects, this.parameters);
+		} catch (java.io.IOException e) {
+			/*
+				TODO log something / do something
+			*/
+		}
 		//get a correction, either by making one or reading from disk
 		
 		PositionCorrector pc = new PositionCorrector(this.parameters);

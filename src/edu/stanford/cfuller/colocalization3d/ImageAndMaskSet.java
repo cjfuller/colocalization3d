@@ -26,11 +26,12 @@ package edu.stanford.cfuller.colocalization3d;
 
 public class ImageAndMaskSet {
 
+	String imageName;
+	String maskName;
 
 	public ImageAndMaskSet(String image, String mask) {
-		/*
-			TODO implementation
-		*/
+		this.imageName = image;
+		this.maskName = mask;
 	}
 
 	/**
@@ -40,11 +41,7 @@ public class ImageAndMaskSet {
 	 */
 	public String getImageFilename() {
 		
-		/*
-			TODO implementation
-		*/
-		
-		return null;
+		return this.imageName;
 		
 	}
 	
@@ -55,11 +52,7 @@ public class ImageAndMaskSet {
 	 */
 	public String getMaskFilename() {
 		
-		/*
-			TODO implementation
-		*/
-		
-		return null;
+		return this.maskName;
 		
 	}
 	
