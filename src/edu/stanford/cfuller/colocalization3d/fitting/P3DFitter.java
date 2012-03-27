@@ -56,6 +56,14 @@ public class P3DFitter extends DistributionFitter {
 		super(p);
 	}
 	
+	/**
+	 * Fits the distances between the two channels of a set of objects to a p3d distribution.
+	 * 
+	 * @param objects the ImageObjects whose distances will be fit
+	 * @param diffs a RealVector containing the scalar distances between the channels of the ImageObjects, in the same order.
+	 * 
+	 * @return a RealVector containing the parameters for the distribution fit: first the mean parameter, second the standard deviation parameter
+	 */
 	public RealVector fit(List<ImageObject> objects, RealVector diffs) {
 		
 		P3dObjectiveFunction of = new P3dObjectiveFunction();

@@ -26,15 +26,44 @@ package edu.stanford.cfuller.colocalization3d;
 
 import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
 
+import java.util.logging.Handler;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 public class Initializer {
+	
+	/**
+	 * Optional parameters
+	 */
+	
+	static final String LOGFILE_PARAM = "log_to_file";
+	static final String DETAILED_LOG_PARAM = "log_detailed_messages";
+	
+	boolean initialized;
+	ParameterDictionary params;
+	
+	public Initializer() {
+		this.initialized = false;
+		params = null;
+	}
 	
 	/**
 	 * Sets up a parameter dictionary from any appropriate default values.
 	 * @return An initialized {@link ParameterDictionary}
 	 */
 	public ParameterDictionary initializeParameters() {
-		//TODO: implementation
-		return ParameterDictionary.emptyDictionary();
+
+		if (this.initialized) return this.params;
+
+		this.setUpLogHandler();
+		
+		this.params = ParameterDictionary.emptyDictionary();
+
+		this.initialized = true;
+
+		return this.params;
 	}
 	
 	/**
@@ -43,10 +72,51 @@ public class Initializer {
 	 * @return a {@link ParameterDictionary} containing the values of parameters initialized based on the arguments
 	 */
 	public ParameterDictionary initializeParameters(String[] cmdLineArgs) {
-		/*
-			TODO implementation
-		*/
-		return ParameterDictionary.emptyDictionary();
+
+		if (this.initialized) return this.params;
+
+
+		if (cmdLineArgs != null && cmdLineArgs.length > 0) {
+			this.params = ParameterDictionary.readParametersFromFile(cmdLineArgs[0]);
+		} else {
+			return initializeParameters();
+		}
+		
+		this.setUpLogHandler();
+		
+		this.initialized = true;
+		
+		return this.params;		
 	}
+	
+	private void setUpLogHandler() {
+
+		Handler h = null;
+
+		if (params.hasKey(LOGFILE_PARAM)) {
+			try {
+				h = new FileHandler(params.getValueForKey(LOGFILE_PARAM));
+			} catch (java.io.IOException e) {
+				System.err.println("Unable to log to file: " + params.getValueForKey(LOGFILE_PARAM) + ".  Logging to console.");
+				h = new ConsoleHandler();
+			}
+
+		} else {
+
+			h = new ConsoleHandler();
+		}
+
+		if (params.hasKeyAndTrue(DETAILED_LOG_PARAM)) {
+			h.setLevel(Level.ALL);
+			Logger.getLogger(Colocalization3DMain.LOGGER_NAME).setLevel(Level.ALL);
+		} else {
+			h.setLevel(Level.INFO);
+			Logger.getLogger(Colocalization3DMain.LOGGER_NAME).setLevel(Level.INFO);
+		}
+
+		Logger.getLogger(Colocalization3DMain.LOGGER_NAME).addHandler(h);
+		Logger.getLogger(Colocalization3DMain.LOGGER_NAME).setUseParentHandlers(false);
+	}
+	
 }
 

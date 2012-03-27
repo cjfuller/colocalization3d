@@ -38,6 +38,14 @@ public abstract class DistributionFitter {
 		this.parameters = p;
 	}
 	
+	/**
+	 * Fits the distances between the two channels of a set of objects to a distribution.
+	 * 
+	 * @param objects the ImageObjects whose distances will be fit
+	 * @param diffs a RealVector containing the scalar distances between the channels of the ImageObjects, in the same order.
+	 * 
+	 * @return a RealVector containing the parameters for the distribution fit; the order and number will depend on the distribution being fit.
+	 */
 	public abstract RealVector fit(java.util.List<ImageObject> objects, RealVector diffs);
 	
 }
