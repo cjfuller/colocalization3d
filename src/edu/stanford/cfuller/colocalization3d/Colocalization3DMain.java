@@ -243,6 +243,11 @@ public class Colocalization3DMain {
 				
 	}
 	
+	/**
+	 * Checks an image object's fitted parameters for a variety of criteria like fit error, camera saturation, etc.  See the documentation in the implementation for specific checks.
+	 * @param toCheck	the ImageObject whose parameters will be checked
+	 * @return true if all the checks succeeded, false otherwise.
+	 */
 	protected boolean fitParametersOk(ImageObject toCheck) {
 		
 		/**
@@ -281,7 +286,7 @@ public class Colocalization3DMain {
 		return true;
 	}
 	
-	protected boolean checkR2Ok(ImageObject obj) {
+	private boolean checkR2Ok(ImageObject obj) {
 
 		if (! this.parameters.hasKey(R2_PARAM)) {return true;}
 
@@ -306,7 +311,7 @@ public class Colocalization3DMain {
 		return true;
 	}
 		
-	protected boolean checkEdgesOk(ImageObject obj) {
+	private boolean checkEdgesOk(ImageObject obj) {
 		//image edges
 		double eps = 0.1; // a little wiggle room
 		double cameraSizeX = this.parameters.getDoubleValueForKey(CAMERA_SIZE_PARAM);
@@ -347,7 +352,7 @@ public class Colocalization3DMain {
 		return true;
 	}
 	
-	protected boolean checkSaturationOk(ImageObject obj) {
+	private boolean checkSaturationOk(ImageObject obj) {
 		
 		if (this.parameters.hasKey(MAX_LEVEL_PARAM)) {
 			obj.boxImages();
@@ -373,7 +378,7 @@ public class Colocalization3DMain {
 		return true;
 	}
 		
-	protected boolean checkSeparationOk(ImageObject obj) {
+	private boolean checkSeparationOk(ImageObject obj) {
 		
 		if (! this.parameters.hasKey(DIST_CUTOFF_PARAM)) {return true;}
 		
@@ -415,7 +420,7 @@ public class Colocalization3DMain {
 		return true;
 	}
 		
-	protected boolean checkFittingErrorOk(ImageObject obj) {
+	private boolean checkFittingErrorOk(ImageObject obj) {
 		
 		if (! this.parameters.hasKey(ERROR_CUTOFF_PARAM)) {return true;}
 		

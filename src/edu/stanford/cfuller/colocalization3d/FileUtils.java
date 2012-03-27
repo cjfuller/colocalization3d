@@ -93,9 +93,9 @@ public class FileUtils {
 	/**
 	 * Lists all the image files to be processed and matches each one with a mask identifying the objects in that image.
 	 * @param p The {@link ParameterDictionary} specifying which files will be processed.
-	 * @return A {@link ImageAndMaskSet java.util.List<ImageAndMaskSet>} containing each filename paired with its mask.
+	 * @return A {@link ImageAndMaskSet List<ImageAndMaskSet>} containing each filename paired with its mask.
 	 */
-	public static java.util.List<ImageAndMaskSet> listFilesToProcess(ParameterDictionary p) {
+	public static List<ImageAndMaskSet> listFilesToProcess(ParameterDictionary p) {
 		//TODO: implemenation
 		return null;
 	}
