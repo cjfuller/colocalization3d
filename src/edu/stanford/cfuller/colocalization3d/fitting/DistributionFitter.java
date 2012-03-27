@@ -28,15 +28,16 @@ package edu.stanford.cfuller.colocalization3d.fitting;
 import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
 import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
 
+import org.apache.commons.math3.linear.RealVector;
 
 public abstract class DistributionFitter {
 	
+	ParameterDictionary parameters;
+	
 	public DistributionFitter(ParameterDictionary p) {
-		/*
-			TODO implementation
-		*/
+		this.parameters = p;
 	}
 	
-	public abstract void fit(java.util.List<ImageObject> objects);
+	public abstract RealVector fit(java.util.List<ImageObject> objects, RealVector diffs);
 	
 }

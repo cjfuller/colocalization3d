@@ -25,18 +25,151 @@
 package edu.stanford.cfuller.colocalization3d.fitting;
 
 import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
+import edu.stanford.cfuller.imageanalysistools.fitting.NelderMeadMinimizer;
+import edu.stanford.cfuller.imageanalysistools.fitting.ObjectiveFunction;
 import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
 
+import org.apache.commons.math3.exception.ConvergenceException;
+import org.apache.commons.math3.analysis.UnivariateFunction;
+import org.apache.commons.math3.linear.ArrayRealVector;
+import org.apache.commons.math3.linear.RealVector;
+
+import java.util.List;
+
 public class P3DFitter extends DistributionFitter {
+	
+	/**
+	 * Required parameters
+	 */
+	
+	static final String MARKER_CH_PARAM = "marker_channel_index";
+	
+	static final String CORR_CH_PARAM = "channel_to_correct";
+	
+	/**
+	 * Optional parameters
+	 */
+	
+	static final String ROBUST_P3D_FIT_PARAM = "robust_p3d_fit_cutoff";
 	
 	public P3DFitter(ParameterDictionary p) {
 		super(p);
 	}
 	
-	public void fit(java.util.List<ImageObject> objects) {
-		/*
-			TODO implementation
-		*/
+	public RealVector fit(List<ImageObject> objects, RealVector diffs) {
+		
+		P3dObjectiveFunction of = new P3dObjectiveFunction();
+		
+		of.setR(diffs);
+		
+		final double tol = 1e-6;
+		
+		NelderMeadMinimizer nmm = new NelderMeadMinimizer(tol);
+		
+		double initialMean = diffs.getL1Norm()/diffs.getDimension();
+		
+		double initialWidth = diffs.mapSubtract(initialMean).map(new org.apache.commons.math3.analysis.function.Power(2)).getL1Norm()/diffs.getDimension();
+		
+		initialWidth = Math.sqrt(initialWidth);
+		
+		RealVector startingPoint = new ArrayRealVector(2,0.0);
+		
+		startingPoint.setEntry(0, initialMean);
+		startingPoint.setEntry(1, initialWidth);
+		
+		RealVector parametersMin = null;
+		
+		if (this.parameters.hasKey(ROBUST_P3D_FIT_PARAM)) {
+			
+			double cutoff = this.parameters.getDoubleValueForKey(ROBUST_P3D_FIT_PARAM);
+			
+			of.setMinProb(cutoff);
+			
+		}			
+		
+		return nmm.optimize(of, startingPoint);
+		
 	}
 	
-}
+	/**
+     * Implements the P3D distribution as an ObjectiveFunction suitable for one of the optimizers in
+     * {@link edu.stanford.cfuller.imageanalysistools.fitting}.
+     */
+    private static class P3dObjectiveFunction implements ObjectiveFunction {
+
+
+        private RealVector r;
+        private double s;
+        private double minProb;
+        private boolean useMinProb;
+        private boolean shouldFitS;
+
+        public P3dObjectiveFunction() {
+            this.r = null;
+            this.shouldFitS = true;
+        }
+
+        public void setMinProb(double minProb) {
+            this.minProb = -1.0*Math.log(minProb);
+            this.useMinProb = true;
+        }
+
+        public double evaluate(RealVector point) {
+
+            double m = point.getEntry(0);
+            double s = point.getEntry(1);
+
+            if (!this.shouldFitS) {
+            	s= this.s;
+            }
+
+            if (m < 0 || s < 0) {return Double.MAX_VALUE;}
+
+            RealVector negLogPVector = new ArrayRealVector(r.getDimension(), 0.0);
+
+            for (int i = 0; i < r.getDimension(); i++) {
+                double tempNegLogP = -1.0*Math.log(p3d(r.getEntry(i), m, s));
+                if (this.useMinProb && tempNegLogP > this.minProb) { tempNegLogP = this.minProb;}
+                negLogPVector.setEntry(i,tempNegLogP);
+            }
+
+            //trimmed mean:
+
+            double trimPercentage = 0.0;
+
+            double[] sortedNegLogP = negLogPVector.toArray();
+
+            java.util.Arrays.sort(sortedNegLogP);
+
+            double negLogL = 0;
+
+            int trimmedLength = (int) Math.floor((1-trimPercentage)*sortedNegLogP.length);
+
+            for (int i =0; i < trimmedLength; i++) {
+
+                negLogL += sortedNegLogP[i];
+
+            }
+
+            return negLogL;
+
+        }
+
+        private double p3d(double r, double m, double s) {
+
+            return ( (Math.exp(-1.0*Math.pow(m-r, 2)/(2*s*s)) - Math.exp(-1.0*Math.pow(m+r, 2)/(2*s*s)))*(Math.sqrt(2.0/Math.PI)*r/(2*m*s)));
+
+        }
+
+        public void setR(RealVector r) {
+            this.r = r;
+        }
+
+        public void setS(double s) {
+            this.s = s;
+            this.shouldFitS = false;
+        }
+
+    }
+
+ }

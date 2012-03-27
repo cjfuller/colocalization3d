@@ -541,13 +541,7 @@ public class Colocalization3DMain {
 		public void run() {
 			try {
 				this.toFit.fitPosition(this.p);
-			} 	catch (org.apache.commons.math.optimization.OptimizationException e) {
-				e.printStackTrace();
-                java.util.logging.Logger.getLogger(LOGGER_NAME).warning("exception while fitting in image: " + this.toFit.getImageID() + ".  Skipping and continuing.");
-            } catch (org.apache.commons.math.MathRuntimeException e) {
-                e.printStackTrace();
-                java.util.logging.Logger.getLogger(LOGGER_NAME).warning("exception while fitting in image: " + this.toFit.getImageID() + ".  Skipping and continuing.");
-            } catch (IllegalArgumentException e) {
+			} catch (IllegalArgumentException e) {
                 e.printStackTrace();
                 java.util.logging.Logger.getLogger(LOGGER_NAME).warning("exception while fitting in image: " + this.toFit.getImageID() + ".  Skipping and continuing.");
             }

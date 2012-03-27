@@ -24,12 +24,12 @@
 
 package edu.stanford.cfuller.colocalization3d.correction;
 
-import org.apache.commons.math.analysis.function.Power;
-import org.apache.commons.math.analysis.function.Sqrt;
-import org.apache.commons.math.linear.ArrayRealVector;
-import org.apache.commons.math.linear.RealMatrix;
-import org.apache.commons.math.linear.Array2DRowRealMatrix;
-import org.apache.commons.math.linear.RealVector;
+import org.apache.commons.math3.analysis.function.Power;
+import org.apache.commons.math3.analysis.function.Sqrt;
+import org.apache.commons.math3.linear.ArrayRealVector;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.RealVector;
 
 import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
 
