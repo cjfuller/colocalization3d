@@ -40,9 +40,12 @@ import edu.stanford.cfuller.imageanalysistools.image.ImageCoordinate;
 import edu.stanford.cfuller.imageanalysistools.image.ReadOnlyImage;
 import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
 
+import org.apache.commons.math3.linear.RealVector;
+
 public class Colocalization3DMain {
 	
 	public static final String LOGGER_NAME= "edu.stanford.cfuller.colocalization3d";
+	protected final static java.util.logging.Logger loggerRegerence = java.util.logging.Logger.getLogger(LOGGER_NAME);
 	
 	static final int DEFAULT_MAX_THREADS = 4;
 	static final int DEFAULT_THREAD_WAIT_MS = 50;
@@ -75,7 +78,6 @@ public class Colocalization3DMain {
 	 * Automatically filled parameters:
 	 */
 	
-	static final String CAMERA_SIZE_PARAM = "camera_size";
 	static final String NUM_PLANES_PARAM = "numplanes";
 	
 	
@@ -132,6 +134,10 @@ public class Colocalization3DMain {
 			Image dark = FileUtils.loadImage(this.parameters.getValueForKey(DARK_IMAGE_PARAM));
 			
 			Filter isf = new ImageSubtractionFilter();
+			
+			/*
+				TODO fix this: the image subtraction filter assumes it will have the same number of z-planes and then doesn't subtract the right thing.
+			*/
 			
 			isf.setReferenceImage(dark);
 			isf.apply(theImage);
@@ -205,9 +211,11 @@ public class Colocalization3DMain {
 			maxThreadCount = this.parameters.getIntValueForKey(THREAD_COUNT_PARAM);
 		}
 		
-		for (int i = 1; i < maxRegionId; i++) {
+		java.util.logging.Logger.getLogger(LOGGER_NAME).fine("Image: " + iams.getImageFilename());
 		
-			ImageObject obj = new edu.stanford.cfuller.imageanalysistools.fitting.GaussianImageObject(i, new ReadOnlyImage(im), new ReadOnlyImage(mask), this.parameters);
+		for (int i = 1; i < maxRegionId + 1; i++) {
+		
+			ImageObject obj = new edu.stanford.cfuller.imageanalysistools.fitting.GaussianImageObject(i, new ReadOnlyImage(mask), new ReadOnlyImage(im), this.parameters);
 		
 			obj.setImageID(iams.getImageFilename());
 		
@@ -304,14 +312,11 @@ public class Colocalization3DMain {
 		
 		for (double r2 : obj.getFitR2ByChannel()) {
 			if (r2 < R2Cutoff) {
-				/*
-					TODO log something
-				*/
+
+				this.failures.addFailure(FitFailureStatistics.R2_FAIL);
 				
-				/*
-					TODO increment fit failure
-				*/
 				
+				java.util.logging.Logger.getLogger(LOGGER_NAME).finer("check failed for object " + obj.getLabel() + " R^2 = " + r2);
 				return false;
 			}
 			++c;
@@ -322,8 +327,8 @@ public class Colocalization3DMain {
 	private boolean checkEdgesOk(ImageObject obj) {
 		//image edges
 		double eps = 0.1; // a little wiggle room
-		double cameraSizeX = this.parameters.getDoubleValueForKey(CAMERA_SIZE_PARAM);
-		double cameraSizeY = cameraSizeX;
+		double cameraSizeX = obj.getParent().getDimensionSizes().get(ImageCoordinate.X);
+		double cameraSizeY = obj.getParent().getDimensionSizes().get(ImageCoordinate.Y);
 		double numplanes = this.parameters.getDoubleValueForKey(NUM_PLANES_PARAM);
 		double imageBorderSize = this.parameters.getDoubleValueForKey(BORDER_PARAM);
 		double halfZSize = this.parameters.getDoubleValueForKey(Z_BOX_SIZE_PARAM);
@@ -343,13 +348,12 @@ public class Colocalization3DMain {
 				pos_y + eps <= imageBorderSize ||
 				pos_z - eps > numplanes - halfZSize ||
 				pos_z + eps <= halfZSize) {
-					/*
-						TODO log something
-					*/
+
+					this.failures.addFailure(FitFailureStatistics.EDGE_FAIL);
 					
-					/*
-						TODO increment fit failures
-					*/
+					
+					java.util.logging.Logger.getLogger(LOGGER_NAME).finer("check failed for object " + obj.getLabel() + " position: " + pos_x + ", " + pos_y + ", " + pos_z);
+					
 					return false;
 				}
 		
@@ -369,13 +373,13 @@ public class Colocalization3DMain {
 			
 			for (ImageCoordinate ic : obj.getParent()) {
 				if (obj.getParent().getValue(ic) > cutoff) {
-					/*
-						TODO log something
-					*/
-					/*
-						TODO increment fit failures
-					*/
+
+					this.failures.addFailure(FitFailureStatistics.SAT_FAIL);
+					
+					
 					obj.unboxImages();
+					java.util.logging.Logger.getLogger(LOGGER_NAME).finer("check failed for object " + obj.getLabel() + " brightness: " + obj.getParent().getValue(ic));
+					
 					return false;
 				}
 			}
@@ -401,23 +405,20 @@ public class Colocalization3DMain {
 		z_sectionsize_2 *= z_sectionsize_2;
 		
 		for (int i = 0; i < numberOfChannels; i++) {
-			for (int j = 0; j < numberOfChannels; j++) {
-				if (i == j) continue;
+			for (int j = i+1; j < numberOfChannels; j++) {
 				
 				FitParameters fp1 = obj.getFitParametersByChannel().get(i);
 				FitParameters fp2 = obj.getFitParametersByChannel().get(j);
 				
 				double ijdist = xy_pixelsize_2 * Math.pow(fp1.getPosition(ImageCoordinate.X) - fp2.getPosition(ImageCoordinate.X),2) + xy_pixelsize_2 * Math.pow(fp1.getPosition(ImageCoordinate.Y) - fp2.getPosition(ImageCoordinate.Y),2) + z_sectionsize_2 * Math.pow(fp1.getPosition(ImageCoordinate.Z) - fp2.getPosition(ImageCoordinate.Z),2);
 			
+				ijdist = Math.sqrt(ijdist);
+						
 				if (ijdist > this.parameters.getDoubleValueForKey(DIST_CUTOFF_PARAM)) {
-				
-					/*
-						TODO log something
-					*/
 					
-					/*
-						TODO increment fit failures
-					*/
+					this.failures.addFailure(FitFailureStatistics.SEP_FAIL);
+					
+					java.util.logging.Logger.getLogger(LOGGER_NAME).finer("check failed for object " + obj.getLabel() + " separation: " + ijdist + " from channels " + i + " to " + j);
 					
 					return false;
 				}
@@ -441,14 +442,10 @@ public class Colocalization3DMain {
 		totalError = Math.sqrt(totalError);
 		
 		if (totalError > this.parameters.getDoubleValueForKey(ERROR_CUTOFF_PARAM) || Double.isNaN(totalError)) {
+
+			this.failures.addFailure(FitFailureStatistics.ERR_FAIL);
 			
-			/*
-				TODO log something
-			*/
-			
-			/*
-				TODO increment fit failures
-			*/
+			java.util.logging.Logger.getLogger(LOGGER_NAME).finer("check failed for object " + obj.getLabel() + " fit error: " + totalError);
 			
 			return false;
 			
@@ -462,7 +459,7 @@ public class Colocalization3DMain {
 		//initialize parameters
 		
 		this.parameters = in.initializeParameters();
-		
+				
 		//load precomputed position data if needed
 		
 		List<ImageObject> imageObjects = this.loadExistingPositionData();
@@ -481,12 +478,19 @@ public class Colocalization3DMain {
 				
 				for (ImageObject iobj : fittedObjects) {
 					if (this.fitParametersOk(iobj)) {
+						java.util.logging.Logger.getLogger(LOGGER_NAME).finer("position for object " + iobj.getLabel() + " " + iobj.getPositionForChannel(0).getEntry(0) + " " + iobj.getPositionForChannel(0).getEntry(1) + " " + iobj.getPositionForChannel(0).getEntry(2));
 						imageObjects.add(iobj);
 					}
 				}
 				
 			}
 			
+		}
+		
+		java.util.logging.Logger.getLogger(LOGGER_NAME).info(this.failures.toString());
+		
+		for (ImageObject iobj : imageObjects) {
+			iobj.nullifyImages();
 		}
 		
 		//write the objects and their positions to disk
@@ -505,13 +509,15 @@ public class Colocalization3DMain {
 		
 		//apply the correction, removing objects that cannot be corrected
 		
-		pc.applyCorrection(c, imageObjects);
+		RealVector diffs = pc.applyCorrection(c, imageObjects);
 						
 		//fit the distribution of separations
 		
 		DistributionFitter df = new P3DFitter(this.parameters);
 		
-		df.fit(imageObjects, null);
+		RealVector fitparams = df.fit(imageObjects, diffs);
+		
+		System.out.println(fitparams);
 		
 		//output plots and information
 		
@@ -552,6 +558,8 @@ public class Colocalization3DMain {
 		@Override
 		public void run() {
 			try {
+				java.util.logging.Logger.getLogger(LOGGER_NAME).finer("Processing object #" + this.toFit.getLabel());
+                
 				this.toFit.fitPosition(this.p);
 			} catch (IllegalArgumentException e) {
                 e.printStackTrace();

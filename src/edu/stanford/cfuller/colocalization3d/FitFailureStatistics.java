@@ -24,6 +24,40 @@
 
 package edu.stanford.cfuller.colocalization3d;
 
+import org.apache.commons.math3.linear.RealVector;
+
 public class FitFailureStatistics {
 	
+	public final static int R2_FAIL = 0;
+	public final static int EDGE_FAIL = 1;
+	public final static int SAT_FAIL = 2;
+	public final static int SEP_FAIL = 3;
+	public final static int ERR_FAIL = 4;
+	
+	final int n_reasons = 5;
+	
+	RealVector failCounts;
+	
+	public FitFailureStatistics() {
+		this.failCounts = new org.apache.commons.math3.linear.ArrayRealVector(n_reasons, 0.0);
+	}
+	
+	public void addFailure(int reason) {
+		this.failCounts.setEntry(reason, this.failCounts.getEntry(reason)+1);
+	}
+	
+	public int getFailureCount(int reason) {
+		return (int) this.failCounts.getEntry(reason);
+	}
+	
+	public String toString() {
+		String result = "Objects on which fitting failed due to:\n";
+		result += "Edge proximity: " + this.getFailureCount(EDGE_FAIL) + "\n";
+		result += "Brightness: " + this.getFailureCount(SAT_FAIL) + "\n";
+		result += "R^2 value: " + this.getFailureCount(R2_FAIL) + "\n";
+		result += "Fitting error: " + this.getFailureCount(ERR_FAIL) + "\n";
+		result += "Channel separation: " + this.getFailureCount(SEP_FAIL) + "\n";
+		return result;
+	}
+ 	
 }

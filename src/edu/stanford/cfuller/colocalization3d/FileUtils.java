@@ -58,10 +58,12 @@ public class FileUtils {
 	static final String MASK_DIR_PARAM = "mask_relative_dirname";
 	static final String MASK_EXT_PARAM = "mask_extra_extension";
 	static final String DATA_DIR_PARAM = "data_directory";
+	static final String CORR_DATE_PARAM = "correction_date";
 	
 	
 	
 	static final String position_xml_extension = "_position_data.xml";
+	static final String correction_xml_extension = "_correction.xml";
 
 	
 	/**
@@ -238,5 +240,15 @@ public class FileUtils {
         pw.close();
 	}
 	
+	/**
+	 * Gets a filename to which a correction should be stored based upon the analysis parameters.
+     * @param p     The ParameterDictionary used for the analysis.
+     * @return      The filename of the correction.
+     */
+	public static String getCorrectionFilename(ParameterDictionary p) {
+		String dir = p.getValueForKey(DATA_DIR_PARAM);
+		String filename = p.getValueForKey(CORR_DATE_PARAM);
+		return (dir + File.separator + filename + correction_xml_extension);
+	}
 	
 }
