@@ -72,6 +72,7 @@ public class PositionCorrector {
 	 */
 	
 	final static String DET_CORR_PARAM = "determine_correction";
+	static final String THREAD_COUNT_PARAM = "max_threads";
 
 	ParameterDictionary parameters;
 
@@ -339,5 +340,194 @@ public class PositionCorrector {
 
         return newDiffs;
 	}
+
+	 /**
+     * Determines the target registration error for a correction by successively leaving out each ImageObject in a set used to make a correction,
+     * calculating a correction from the remaining objects, and assessing the error in correcting the object left out.
+     * 
+     * @param imageObjects                  A Vector containing all the ImageObjects to be used for the correction
+     *                                      or in the order it appears in a multiwavelength image file.
+     * @return                              The average value of the error over all objects.
+     */
+	public double determineTRE(java.util.List<ImageObject> imageObjects) {
+
+		int referenceChannel = this.parameters.getIntValueForKey(REF_CH_PARAM);
+
+		int channelToCorrect = this.parameters.getIntValueForKey(CORR_CH_PARAM);
+		
+		RealVector treVector = new ArrayRealVector(imageObjects.size(), 0.0);
+        RealVector treXYVector = new ArrayRealVector(imageObjects.size(), 0.0);
+
+        java.util.Deque<TREThread> startedThreads = new java.util.LinkedList<TREThread>();
+        int maxThreads = 1;
+		if (this.parameters.hasKey(THREAD_COUNT_PARAM)) {
+			maxThreads = this.parameters.getIntValueForKey(THREAD_COUNT_PARAM);
+		}
+        final int threadWaitTime_ms = 1000;
+
+        for (int removeIndex = 0; removeIndex < imageObjects.size(); removeIndex++) {
+
+            if (removeIndex % 10 == 0) {
+
+                java.util.logging.Logger.getLogger(edu.stanford.cfuller.colocalization3d.Colocalization3DMain.LOGGER_NAME).finer("calulating TRE: point " + (removeIndex+1) + " of " + imageObjects.size());
+            }
+
+            TREThread nextFit = new TREThread(imageObjects, referenceChannel, channelToCorrect, removeIndex, this);
+
+            if (startedThreads.size() < maxThreads) {
+                startedThreads.add(nextFit);
+                nextFit.start();
+            } else {
+                TREThread next = startedThreads.poll();
+                try {
+
+                    next.join(threadWaitTime_ms);
+
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                while (next.isAlive()) {
+                    startedThreads.add(next);
+                    next = startedThreads.poll();
+
+                    try {
+
+                        next.join(threadWaitTime_ms);
+
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                treVector.setEntry(next.getRemoveIndex(), next.getTre());
+
+                treXYVector.setEntry(next.getRemoveIndex(), next.getTreXY());
+
+                startedThreads.add(nextFit);
+                nextFit.start();
+            }
+
+
+
+        }
+
+        java.util.List<Integer> unsuccessful_TRE = new java.util.ArrayList<Integer>();
+
+        while(startedThreads.size() > 0) {
+            TREThread next = startedThreads.poll();
+            try {
+                next.join();
+                if (next.getSuccess()) {
+                	treVector.setEntry(next.getRemoveIndex(), next.getTre());
+                } else {
+                	unsuccessful_TRE.add(next.getRemoveIndex());
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        RealVector treVector_mod = new ArrayRealVector(treVector.getDimension() - unsuccessful_TRE.size());
+        RealVector treXYVector_mod = new ArrayRealVector(treVector_mod.getDimension());
+
+        int c = 0;
+
+        //unsuccessful TRE calculation results when there is incomplete coverage in the correction dataset
+        for (int i = 0; i < treVector.getDimension(); ++i) {
+        	if (! unsuccessful_TRE.contains(i)) {
+        		treVector_mod.setEntry(c, treVector.getEntry(i));
+        		treXYVector_mod.setEntry(c, treXYVector.getEntry(i));
+        		++c;
+        	}
+        }
+
+        treVector = treVector_mod;
+        treXYVector = treXYVector_mod;
+
+		double tre = treVector.getL1Norm()/treVector.getDimension();
+		double xy_tre = (treXYVector.getL1Norm()/treXYVector.getDimension());
+
+		java.util.logging.Logger.getLogger(edu.stanford.cfuller.colocalization3d.Colocalization3DMain.LOGGER_NAME).info("TRE: " + tre);
+		java.util.logging.Logger.getLogger(edu.stanford.cfuller.colocalization3d.Colocalization3DMain.LOGGER_NAME).info("x-y TRE: " + xy_tre);
+		
+        return tre;
+
+    }
+
+    private static class TREThread extends Thread {
+
+        java.util.List<ImageObject> imageObjects;
+        int referenceChannel;
+        int channelToCorrect;
+        int removeIndex;
+        double tre;
+        double treXY;
+        PositionCorrector parentCorrector;
+        boolean success;
+
+        public TREThread(java.util.List<ImageObject> imageObjects, int referenceChannel, int channelToCorrect, int removeIndex, PositionCorrector parentCorrector) {
+
+            this.imageObjects = imageObjects;
+            this.channelToCorrect = channelToCorrect;
+            this.referenceChannel = referenceChannel;
+            this.removeIndex = removeIndex;
+            this.parentCorrector = parentCorrector;
+            this.success = false;
+
+        }
+
+        public void run() {
+
+            java.util.List<ImageObject> tempObjects = new java.util.ArrayList<ImageObject>();
+
+            for (ImageObject iobj : imageObjects) {
+            	tempObjects.add(iobj);
+            }
+
+            tempObjects.remove(removeIndex);
+
+            Correction c = parentCorrector.getCorrection(tempObjects);
+
+            RealVector pos = this.imageObjects.get(removeIndex).getPositionForChannel(referenceChannel);
+
+            RealVector corr = null;
+            try {
+            	corr = c.correctPosition(pos.getEntry(0), pos.getEntry(1));
+            	this.success = true;
+            } catch (UnableToCorrectException e) {
+            	this.success = false;
+            	this.tre = -1.0*Double.MAX_VALUE;
+            	this.treXY = -1.0*Double.MAX_VALUE;
+            	return;
+            }
+
+            RealVector treVecRealUnits =  this.imageObjects.get(removeIndex).getVectorDifferenceBetweenChannels(referenceChannel, channelToCorrect).subtract(corr).ebeMultiply(parentCorrector.pixelToDistanceConversions);
+
+            this.tre = treVecRealUnits.getNorm();
+
+            this.treXY = Math.sqrt(Math.pow(treVecRealUnits.getEntry(0),2) + Math.pow(treVecRealUnits.getEntry(1),2));
+
+
+        }
+
+        public double getTre() {
+            return tre;
+        }
+
+        public double getTreXY() {
+        	return treXY;
+        }
+
+        public int getRemoveIndex() {
+            return removeIndex;
+        }
+
+        public boolean getSuccess() {
+        	return success;
+        }
+
+    }
+
 
 }

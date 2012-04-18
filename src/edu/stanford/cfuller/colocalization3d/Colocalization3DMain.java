@@ -24,9 +24,13 @@
 package edu.stanford.cfuller.colocalization3d;
 
 import java.io.File;
+import java.io.PrintWriter;
+import java.io.FileWriter;
 import java.util.List;
 
 import edu.stanford.cfuller.colocalization3d.correction.Correction;
+import edu.stanford.cfuller.colocalization3d.correction.UnableToCorrectException;
+
 import edu.stanford.cfuller.colocalization3d.correction.PositionCorrector;
 import edu.stanford.cfuller.colocalization3d.fitting.DistributionFitter;
 import edu.stanford.cfuller.colocalization3d.fitting.P3DFitter;
@@ -55,7 +59,7 @@ public class Colocalization3DMain {
 	*/
 	
 	static final String DIRNAME_PARAM = "dirname_set";
-	static final String BASENAME_PARAM = "basefilename_set";
+	static final String BASENAME_PARAM = "basename_set";
 	static final String BORDER_PARAM = "im_border_size";
 	static final String Z_BOX_SIZE_PARAM = "half_z_size";
 	static final String DETERMINE_CORRECTION_PARAM = "determine_correction";
@@ -73,6 +77,10 @@ public class Colocalization3DMain {
 	static final String MAX_LEVEL_PARAM = "max_greylevel_cutoff";
 	static final String DIST_CUTOFF_PARAM = "distance_cutoff";
 	static final String ERROR_CUTOFF_PARAM = "fit_error_cutoff";
+	static final String DET_CORR_PARAM = "determine_correction";
+	static final String DET_TRE_PARAM = "determine_tre";
+	static final String POS_OUTPUT_DIR_PARAM = "output_positions_to_directory";
+	
 	
 	/**
 	 * Automatically filled parameters:
@@ -104,13 +112,9 @@ public class Colocalization3DMain {
 			try {
 				return FileUtils.readPositionData(this.parameters);
 			} catch (java.io.IOException e) {
-				/*
-					TODO Log something
-				*/
+				java.util.logging.Logger.getLogger(LOGGER_NAME).warning("unable to read position data from disk: " + e.getMessage());
 			} catch (ClassNotFoundException e) {
-				/*
-					TODO Log something
-				*/
+				java.util.logging.Logger.getLogger(LOGGER_NAME).warning("unable to read position data from disk: " + e.getMessage());
 			}
 		}
 		
@@ -133,11 +137,9 @@ public class Colocalization3DMain {
 			
 			Image dark = FileUtils.loadImage(this.parameters.getValueForKey(DARK_IMAGE_PARAM));
 			
-			Filter isf = new ImageSubtractionFilter();
+			ImageSubtractionFilter isf = new ImageSubtractionFilter();
 			
-			/*
-				TODO fix this: the image subtraction filter assumes it will have the same number of z-planes and then doesn't subtract the right thing.
-			*/
+			isf.setSubtractPlanarImage(true);
 			
 			isf.setReferenceImage(dark);
 			isf.apply(theImage);
@@ -197,6 +199,11 @@ public class Colocalization3DMain {
 		Image im = this.loadAndCorrectImageFromSet(iams);
 		
 		Image mask = this.loadMaskFromSet(iams);
+		
+		if (im == null || mask == null) {
+			java.util.logging.Logger.getLogger(LOGGER_NAME).warning("unable to load image and mask for " + iams.getImageFilename());
+			return new java.util.ArrayList<ImageObject>();
+		}
 		
 		Histogram h = new Histogram(mask);
 		
@@ -478,9 +485,11 @@ public class Colocalization3DMain {
 				
 				for (ImageObject iobj : fittedObjects) {
 					if (this.fitParametersOk(iobj)) {
-						java.util.logging.Logger.getLogger(LOGGER_NAME).finer("position for object " + iobj.getLabel() + " " + iobj.getPositionForChannel(0).getEntry(0) + " " + iobj.getPositionForChannel(0).getEntry(1) + " " + iobj.getPositionForChannel(0).getEntry(2));
+						//java.util.logging.Logger.getLogger(LOGGER_NAME).finer("position for object " + iobj.getLabel() + " " + iobj.getPositionForChannel(0).getEntry(0) + " " + iobj.getPositionForChannel(0).getEntry(1) + " " + iobj.getPositionForChannel(0).getEntry(2));
 						imageObjects.add(iobj);
 					}
+					
+					iobj.nullifyImages();
 				}
 				
 			}
@@ -488,10 +497,6 @@ public class Colocalization3DMain {
 		}
 		
 		java.util.logging.Logger.getLogger(LOGGER_NAME).info(this.failures.toString());
-		
-		for (ImageObject iobj : imageObjects) {
-			iobj.nullifyImages();
-		}
 		
 		//write the objects and their positions to disk
 		try {
@@ -501,15 +506,47 @@ public class Colocalization3DMain {
 				TODO log something / do something
 			*/
 		}
+		
+		
+		
 		//get a correction, either by making one or reading from disk
 		
 		PositionCorrector pc = new PositionCorrector(this.parameters);
 		
 		Correction c = pc.getCorrection(imageObjects);
 		
+		//get or calculate the TRE
+		
+		double tre = 0;
+		
+		if (!(this.parameters.hasKeyAndTrue(DET_TRE_PARAM) && this.parameters.hasKeyAndTrue(DET_CORR_PARAM) )) {
+			tre = c.getTre();
+		} else {
+			tre = pc.determineTRE(imageObjects);
+			c.setTre(tre);
+		}
+		
+		//write the correction to disk
+		
+		try {
+			c.writeToDisk(FileUtils.getCorrectionFilename(this.parameters));
+		} catch (java.io.IOException e) {
+			java.util.logging.Logger.getLogger(LOGGER_NAME).severe("Exception encountered while writing correction to disk: " + e.getMessage());
+		}
+		
 		//apply the correction, removing objects that cannot be corrected
 		
 		RealVector diffs = pc.applyCorrection(c, imageObjects);
+		
+		List<ImageObject> correctedImageObjects = new java.util.ArrayList<ImageObject>();
+		
+		for (ImageObject iobj : imageObjects) {
+			if (iobj.getCorrectionSuccessful()) {
+				correctedImageObjects.add(iobj);
+			}
+		}
+		
+		imageObjects = correctedImageObjects;
 						
 		//fit the distribution of separations
 		
@@ -521,6 +558,11 @@ public class Colocalization3DMain {
 		
 		//output plots and information
 		
+		if (this.parameters.hasKey(POS_OUTPUT_DIR_PARAM)) { 
+    		this.outputPositionData(imageObjects, c);
+        }
+		
+		
 		/*
 			TODO output
 		*/
@@ -528,9 +570,7 @@ public class Colocalization3DMain {
 	}
 
 	public static void main(String[] args) {
-		
-		System.out.println("Hello, world!");
-		
+				
 		Initializer in = new Initializer();
 		
 		in.initializeParameters(args);
@@ -570,5 +610,93 @@ public class Colocalization3DMain {
 		
 	}
 	
+	private String formatPositionData(java.util.List<ImageObject> imageObjects, Correction c) {
+		
+		StringBuilder sb = new StringBuilder();
+
+        StringBuilder sbSingle = new StringBuilder();
+
+        String currentImageName = "";
+
+        File lastFile = null;
+
+        for (int o = 0; o < imageObjects.size(); o++) {
+
+        	ImageObject currObject = imageObjects.get(o);
+
+            String objectImageName = currObject.getImageID();
+
+            if (! currentImageName.equals(objectImageName)) {
+            	if (!(sbSingle.length() == 0)) {
+            		sb.append(sbSingle.toString());
+                    
+            		sbSingle = new StringBuilder();
+            	}
+                sb.append(objectImageName+"\n");
+                currentImageName = objectImageName;
+
+                
+
+
+            }
+
+            RealVector correction = null;
+            try {
+            	correction = c.correctPosition(currObject.getPositionForChannel(c.getReferenceChannelIndex()).getEntry(0),currObject.getPositionForChannel(c.getReferenceChannelIndex()).getEntry(1));
+            } catch (UnableToCorrectException e) {
+            	continue;
+            }
+
+            sbSingle.append(currObject.getLabel());
+            sbSingle.append(" ");
+
+            sbSingle.append(currObject.getPositionForChannel(c.getReferenceChannelIndex()).getEntry(0));
+            sbSingle.append(" ");
+            sbSingle.append(currObject.getPositionForChannel(c.getReferenceChannelIndex()).getEntry(1));
+            sbSingle.append(" ");
+            sbSingle.append(currObject.getPositionForChannel(c.getReferenceChannelIndex()).getEntry(2));
+            sbSingle.append(" ");
+            sbSingle.append(currObject.getPositionForChannel(c.getCorrectionChannelIndex()).getEntry(0));
+            sbSingle.append(" ");
+            sbSingle.append(currObject.getPositionForChannel(c.getCorrectionChannelIndex()).getEntry(1));
+            sbSingle.append(" ");
+            sbSingle.append(currObject.getPositionForChannel(c.getCorrectionChannelIndex()).getEntry(2));
+            sbSingle.append(" ");
+            RealVector corrPos = null;
+            if (this.parameters.hasKeyAndTrue("flip_channels_at_end")) {
+            	corrPos = currObject.getPositionForChannel(c.getCorrectionChannelIndex()).add(correction);
+            } else {
+            	corrPos = currObject.getPositionForChannel(c.getCorrectionChannelIndex()).subtract(correction);
+            }
+            sbSingle.append(corrPos.getEntry(0));
+            sbSingle.append(" ");
+            sbSingle.append(corrPos.getEntry(1));
+            sbSingle.append(" ");
+            sbSingle.append(corrPos.getEntry(2));
+            sbSingle.append(" ");
+            sbSingle.append(currObject.getFitParametersByChannel().get(c.getReferenceChannelIndex()).getAmplitude());
+            sbSingle.append(" ");
+            sbSingle.append(currObject.getFitParametersByChannel().get(c.getCorrectionChannelIndex()).getAmplitude());
+            sbSingle.append("\n");
+        }
+
+        sb.append(sbSingle.toString());
+        
+        return sb.toString();
+
+		
+	}
+	
+	private void outputPositionData(java.util.List<ImageObject> imageObjects, Correction c) {
+		try {
+			String s = this.formatPositionData(imageObjects, c);
+			PrintWriter p = (new PrintWriter(new FileWriter(this.parameters.getValueForKey(POS_OUTPUT_DIR_PARAM) + File.separator + this.parameters.getValueForKey(BASENAME_PARAM) + ".txt")));
+			p.print(s);
+			p.close();
+		} catch (java.io.IOException e) {
+			java.util.logging.Logger.getLogger(LOGGER_NAME).warning("unable to write position data to file: " + e.getMessage());
+		}
+		
+	}
 }
 
