@@ -29,6 +29,7 @@ import java.util.List;
 import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
 import edu.stanford.cfuller.imageanalysistools.image.Image;
 import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
+import edu.stanford.cfuller.imageanalysistools.util.Base64BinaryAdapter;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -40,7 +41,6 @@ import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -60,10 +60,16 @@ public class FileUtils {
 	static final String DATA_DIR_PARAM = "data_directory";
 	static final String CORR_DATE_PARAM = "correction_date";
 	
+	/**
+	* optional parameters
+	*/
+	
+	static final String IN_SITU_ABERR_NAME_PARAM = "in_situ_aberr_corr_basename_set";
 	
 	
 	static final String position_xml_extension = "_position_data.xml";
 	static final String correction_xml_extension = "_correction.xml";
+	static final String multi_name_sep = ",";
 
 	
 	/**
@@ -85,14 +91,49 @@ public class FileUtils {
 	}
 	
 	/**
+	 * Gets the full set of base filenames for in situ aberration correction from a parameter dictionary.
+	 * @param p The {@link ParameterDictionary} specifying the set of base filenames.
+	 * @return A String array containing the filenames.
+	 */
+	public static String[] getInSituAberrCorrPositionFilenames(ParameterDictionary p) {
+		
+		if (p.hasKey(IN_SITU_ABERR_NAME_PARAM)) {
+			
+			String[] filenames = p.getValueForKey(IN_SITU_ABERR_NAME_PARAM).split(multi_name_sep);
+			
+			for (int i = 0; i < filenames.length; i++) {
+				filenames[i] = FileUtils.getPositionDataFilename(filenames[i], p);
+			}
+			
+			return filenames;
+			
+		}
+		
+		return null;
+	}
+	
+	/**
 	 * Gets the filename to which / from which image object positions will be written / read from a parameter dictionary.
 	 * @param p The {@link ParameterDictionary} specifying the filename for the positions.
 	 * @return A String specifying the absolute path to the position file.
 	 */
 	public static String getPositionDataFilename(ParameterDictionary p) {
+		
+		return FileUtils.getPositionDataFilename(p.getValueForKey(BASENAME_PARAM).split(multi_name_sep)[0], p);
+		/*
+			TODO come up with a new convention for filename s.t. it reflects if multiple basenames are stored in it, but is unique for a set of basenames, regardless of order
+		*/
+	}
+	
+	/**
+	 * Gets the filename to which / from which image object positions will be written / read from a parameter dictionary and a base filename.
+	 * @param basename The base filename for the position data file
+	 * @param p The {@link ParameterDictionary} specifying the filename for the positions.
+	 * @return A String specifying the absolute path to the position file.
+	 */
+	protected static String getPositionDataFilename(String basename, ParameterDictionary p) {
 		String dir = p.getValueForKey(DATA_DIR_PARAM);
-		String filename = p.getValueForKey(BASENAME_PARAM).split(",")[0];
-		return (dir + File.separator + filename + position_xml_extension);
+		return (dir + File.separator + basename + position_xml_extension);
 	}
 	
 	
@@ -107,6 +148,30 @@ public class FileUtils {
 
 		String filename = FileUtils.getPositionDataFilename(p);
 
+		return FileUtils.unserializeXMLPositionDataFile(filename);
+
+	}
+	
+	
+
+	public static List<ImageObject> readInSituAberrCorrPositionData(ParameterDictionary p) throws IOException, ClassNotFoundException {
+		
+		String[] filenames = FileUtils.getInSituAberrCorrPositionFilenames(p);
+		
+		List<ImageObject> iobjs = new java.util.ArrayList<ImageObject>();
+		
+		for (String filename : filenames) {
+			iobjs.addAll(FileUtils.unserializeXMLPositionDataFile(filename));
+		}
+		
+		return iobjs;
+		
+	}
+	
+	
+	
+	private static List<ImageObject> unserializeXMLPositionDataFile(String filename) throws IOException, ClassNotFoundException {
+		
 		File f = new File(filename);
 
 		FileReader fr = new FileReader(f);
@@ -116,7 +181,7 @@ public class FileUtils {
 
 		List<ImageObject> output = new java.util.ArrayList<ImageObject>();
 
-		HexBinaryAdapter hba = new HexBinaryAdapter();
+		Base64BinaryAdapter hba = new Base64BinaryAdapter();
 
 		try {
 			xsr = XMLInputFactory.newFactory().createXMLStreamReader(fr);
@@ -145,8 +210,8 @@ public class FileUtils {
 		}
 
 		return output;
-
 	}
+	
 	
 	/**
 	 * Loads an image from the specified filename.

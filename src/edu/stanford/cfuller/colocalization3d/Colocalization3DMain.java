@@ -80,6 +80,9 @@ public class Colocalization3DMain {
 	static final String DET_CORR_PARAM = "determine_correction";
 	static final String DET_TRE_PARAM = "determine_tre";
 	static final String POS_OUTPUT_DIR_PARAM = "output_positions_to_directory";
+	static final String IN_SITU_ABERR_NAME_PARAM = "in_situ_aberr_corr_basename_set";
+	static final String IN_SITU_ABERR_SECOND_CH_PARAM = "in_situ_aberr_corr_channel";
+	
 	
 	
 	/**
@@ -496,9 +499,9 @@ public class Colocalization3DMain {
 			
 		}
 		
-		java.util.logging.Logger.getLogger(LOGGER_NAME).info(this.failures.toString());
+		java.util.logging.Logger.getLogger(LOGGER_NAME).fine(this.failures.toString());
 		
-		//write the objects and their positions to disk
+		//write the objects and their positions to disk now in case something goes wrong in subsequent steps so that we don't lose them
 		try {
 			FileUtils.writeFittedImageObjectsToDisk(imageObjects, this.parameters);
 		} catch (java.io.IOException e) {
@@ -547,6 +550,15 @@ public class Colocalization3DMain {
 		}
 		
 		imageObjects = correctedImageObjects;
+		
+		//write the objects and their positions to disk again now that they've been corrected and filtered
+		try {
+			FileUtils.writeFittedImageObjectsToDisk(imageObjects, this.parameters);
+		} catch (java.io.IOException e) {
+			/*
+				TODO log something / do something
+			*/
+		}
 						
 		//fit the distribution of separations
 		
@@ -554,18 +566,29 @@ public class Colocalization3DMain {
 		
 		RealVector fitparams = df.fit(imageObjects, diffs);
 		
-		System.out.println(fitparams);
-		
+		java.util.logging.Logger.getLogger(LOGGER_NAME).info("p3d fit parameters: " + fitparams.toString());
+				
 		//output plots and information
 		
 		if (this.parameters.hasKey(POS_OUTPUT_DIR_PARAM)) { 
     		this.outputPositionData(imageObjects, c);
         }
+
+		if (this.parameters.hasKey(IN_SITU_ABERR_NAME_PARAM) && this.parameters.hasKey(IN_SITU_ABERR_SECOND_CH_PARAM)) {
+
+			RealVector slopes = pc.determineInSituAberrationCorrection();
+			
+			java.util.List<RealVector> vectorDiffs = pc.applyInSituAberrationCorrection(imageObjects, slopes);
+			
+			RealVector scalarDiffs = this.getScalarDifferencesFromVectorDifferences(vectorDiffs);
+			
+			RealVector corrFitParams = df.fit(imageObjects, scalarDiffs);
+			
+			
+			java.util.logging.Logger.getLogger(LOGGER_NAME).info("p3d fit parameters after in situ correction: " + corrFitParams.toString());
+			
+		}
 		
-		
-		/*
-			TODO output
-		*/
 		
 	}
 
@@ -698,5 +721,20 @@ public class Colocalization3DMain {
 		}
 		
 	}
+
+	private RealVector getScalarDifferencesFromVectorDifferences(java.util.List<RealVector> vecDiffs) {
+		
+		RealVector scalarDiffs = new org.apache.commons.math3.linear.ArrayRealVector(vecDiffs.size(), 0.0);
+		
+		for (int i = 0; i < vecDiffs.size(); i++) {
+		
+			scalarDiffs.setEntry(i, vecDiffs.get(i).getNorm());
+		
+		}
+		
+		return scalarDiffs;
+		
+	}
+
 }
 

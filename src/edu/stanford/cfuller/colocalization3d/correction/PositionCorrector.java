@@ -25,6 +25,7 @@
 package edu.stanford.cfuller.colocalization3d.correction;
 
 import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
+import edu.stanford.cfuller.imageanalysistools.fitting.BisquareLinearFit;
 import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
 
 import edu.stanford.cfuller.colocalization3d.FileUtils;
@@ -71,8 +72,10 @@ public class PositionCorrector {
 	 * Optional parameters
 	 */
 	
-	final static String DET_CORR_PARAM = "determine_correction";
+	static final String DET_CORR_PARAM = "determine_correction";
 	static final String THREAD_COUNT_PARAM = "max_threads";
+	static final String IN_SITU_ABERR_SECOND_CH_PARAM = "in_situ_aberr_corr_channel";
+	
 
 	ParameterDictionary parameters;
 
@@ -113,12 +116,12 @@ public class PositionCorrector {
 				return Correction.readFromDisk(FileUtils.getCorrectionFilename(this.parameters));
 			} catch (java.io.IOException e) {
 				
-				java.util.logging.Logger.getLogger("edu.stanford.cfuller.colocalization3d").severe("Exception encountered while reading correction from disk: ");
+				java.util.logging.Logger.getLogger(edu.stanford.cfuller.colocalization3d.Colocalization3DMain.LOGGER_NAME).severe("Exception encountered while reading correction from disk: ");
 				e.printStackTrace();
 
 			} catch (ClassNotFoundException e) {
 
-				java.util.logging.Logger.getLogger("edu.stanford.cfuller.colocalization3d").severe("Exception encountered while reading correction from disk: ");
+				java.util.logging.Logger.getLogger(edu.stanford.cfuller.colocalization3d.Colocalization3DMain.LOGGER_NAME).severe("Exception encountered while reading correction from disk: ");
 				e.printStackTrace();
 
 			}
@@ -305,17 +308,12 @@ public class PositionCorrector {
         if (this.parameters.getBooleanValueForKey("correct_images")) {
 
 
-            boolean flip = this.parameters.getBooleanValueForKey("flip_channels_at_end");
 
             for (int i =0; i< imageObjects.size(); i++) {
 
             	try {
 
-	                RealVector corr = c.correctPosition(imageObjects.get(i).getPositionForChannel(referenceChannel).getEntry(0), imageObjects.get(i).getPositionForChannel(referenceChannel).getEntry(1));
-
-	                if (flip) corr.mapMultiplyToSelf(-1.0);
-
-	                newDiffs.setEntry(i, imageObjects.get(i).getVectorDifferenceBetweenChannels(referenceChannel, channelToCorrect).subtract(corr).ebeMultiply(this.pixelToDistanceConversions).getNorm());
+	                newDiffs.setEntry(i, this.correctSingleObjectVectorDifference(c, imageObjects.get(i), referenceChannel, channelToCorrect).getNorm());
 
 	                imageObjects.get(i).setCorrectionSuccessful(true);
 
@@ -340,6 +338,103 @@ public class PositionCorrector {
 
         return newDiffs;
 	}
+
+	private RealVector correctSingleObjectVectorDifference(Correction c, ImageObject obj, int referenceChannel, int correctionChannel) throws UnableToCorrectException {
+		
+		RealVector corr = c.correctPosition(obj.getPositionForChannel(referenceChannel).getEntry(0), obj.getPositionForChannel(referenceChannel).getEntry(1));
+        boolean flip = this.parameters.getBooleanValueForKey("flip_channels_at_end");
+        if (flip) corr.mapMultiplyToSelf(-1.0);
+		obj.applyCorrectionVectorToChannel(correctionChannel, corr);
+        RealVector correctedVectorDiff = obj.getCorrectedVectorDifferenceBetweenChannels(referenceChannel, correctionChannel).ebeMultiply(this.pixelToDistanceConversions);
+		return correctedVectorDiff;
+		
+	}
+
+	public RealVector determineInSituAberrationCorrection() {
+	
+		int referenceChannel = this.parameters.getIntValueForKey(REF_CH_PARAM);
+		int inSituAberrCorrChannel = this.parameters.getIntValueForKey(IN_SITU_ABERR_SECOND_CH_PARAM);
+		int measurementChannel = this.parameters.getIntValueForKey(CORR_CH_PARAM);
+
+		List<ImageObject> iobjsForInSituAberrCorr = null;
+		
+		try {
+			iobjsForInSituAberrCorr = FileUtils.readInSituAberrCorrPositionData(this.parameters); 
+		} catch (java.io.IOException e) {
+			
+			java.util.logging.Logger.getLogger(edu.stanford.cfuller.colocalization3d.Colocalization3DMain.LOGGER_NAME).severe("Exception encountered while reading data for in situ aberration correction from disk: " + e.getMessage());
+
+		} catch (ClassNotFoundException e) {
+
+			java.util.logging.Logger.getLogger(edu.stanford.cfuller.colocalization3d.Colocalization3DMain.LOGGER_NAME).severe("Exception encountered while reading data for in situ aberration correction from disk: " + e.getMessage());
+
+		}
+		
+		RealVector xForCorr = new org.apache.commons.math3.linear.ArrayRealVector(iobjsForInSituAberrCorr.size(), 0.0);
+		RealVector xForExpt = new org.apache.commons.math3.linear.ArrayRealVector(iobjsForInSituAberrCorr.size(), 0.0);
+		RealVector yForCorr = new org.apache.commons.math3.linear.ArrayRealVector(iobjsForInSituAberrCorr.size(), 0.0);
+		RealVector yForExpt = new org.apache.commons.math3.linear.ArrayRealVector(iobjsForInSituAberrCorr.size(), 0.0);
+		RealVector zForCorr = new org.apache.commons.math3.linear.ArrayRealVector(iobjsForInSituAberrCorr.size(), 0.0);
+		RealVector zForExpt = new org.apache.commons.math3.linear.ArrayRealVector(iobjsForInSituAberrCorr.size(), 0.0);
+				
+		for (int i = 0; i < iobjsForInSituAberrCorr.size(); i++) {
+			
+		
+			ImageObject currObj = iobjsForInSituAberrCorr.get(i);
+			RealVector corrDiff = currObj.getCorrectedVectorDifferenceBetweenChannels(referenceChannel, inSituAberrCorrChannel).ebeMultiply(this.pixelToDistanceConversions);
+			RealVector exptDiff = currObj.getCorrectedVectorDifferenceBetweenChannels(referenceChannel, measurementChannel).ebeMultiply(this.pixelToDistanceConversions);
+		
+			xForCorr.setEntry(i, corrDiff.getEntry(0));
+			yForCorr.setEntry(i, corrDiff.getEntry(1));
+			zForCorr.setEntry(i, corrDiff.getEntry(2));
+			
+			xForExpt.setEntry(i, exptDiff.getEntry(0));
+			yForExpt.setEntry(i, exptDiff.getEntry(1));
+			zForExpt.setEntry(i, exptDiff.getEntry(2));
+			
+		}
+		
+		BisquareLinearFit bslf = new BisquareLinearFit();
+		
+		bslf.disableIntercept();
+		
+		RealVector xFit = bslf.fit(xForCorr, xForExpt);
+		RealVector yFit = bslf.fit(yForCorr, yForExpt);
+		RealVector zFit = bslf.fit(zForCorr, zForExpt);
+		
+		RealVector allSlopes = new org.apache.commons.math3.linear.ArrayRealVector(3, 0.0);
+		
+		allSlopes.setEntry(0, xFit.getEntry(0));
+		allSlopes.setEntry(1, yFit.getEntry(0));
+		allSlopes.setEntry(2, zFit.getEntry(0));
+		
+		return allSlopes;
+		
+		
+	}
+
+	
+	public java.util.List<RealVector> applyInSituAberrationCorrection(java.util.List<ImageObject> toCorrect, RealVector slopes) {
+		
+		int referenceChannel = this.parameters.getIntValueForKey(REF_CH_PARAM);
+		int inSituAberrCorrChannel = this.parameters.getIntValueForKey(IN_SITU_ABERR_SECOND_CH_PARAM);
+		int measurementChannel = this.parameters.getIntValueForKey(CORR_CH_PARAM);
+		
+		java.util.List<RealVector> correctedDifferences = new java.util.ArrayList<RealVector>();
+		
+		for (ImageObject iobj : toCorrect) {
+			RealVector corrDiff = iobj.getCorrectedVectorDifferenceBetweenChannels(referenceChannel, inSituAberrCorrChannel).ebeMultiply(this.pixelToDistanceConversions);
+			RealVector exptDiff = iobj.getCorrectedVectorDifferenceBetweenChannels(referenceChannel, measurementChannel).ebeMultiply(this.pixelToDistanceConversions);
+			
+			RealVector correction  = corrDiff.ebeMultiply(slopes);
+			
+			correctedDifferences.add(exptDiff.subtract(correction));
+		}
+		
+		return correctedDifferences;
+		
+	}
+
 
 	 /**
      * Determines the target registration error for a correction by successively leaving out each ImageObject in a set used to make a correction,
