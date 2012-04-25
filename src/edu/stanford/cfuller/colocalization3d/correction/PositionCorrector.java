@@ -350,6 +350,12 @@ public class PositionCorrector {
 		
 	}
 
+	/**
+	* Creates an in situ cellular aberration correction.  This will take a specified group of datasets from the parameters file and perform a robust linar fit between
+	* the aberrations in two pairs of channels (also specified in the parameters file).
+	* 
+	* @return a RealVector with three elements: the slope of the linear fit in the x, y, and z directions.
+	*/
 	public RealVector determineInSituAberrationCorrection() {
 	
 		int referenceChannel = this.parameters.getIntValueForKey(REF_CH_PARAM);
@@ -413,7 +419,13 @@ public class PositionCorrector {
 		
 	}
 
-	
+	/**
+	* Applies an in situ cellular aberration correction to a dataset.
+	* 
+	* @param toCorrect a list of ImageObjects to be corrected.
+	* @param slopes the slopes of a linear fit between the channel pair used to correct and the channel pair being corrected (as calculated by {@link #determineInSituAberrationCorrection()}, for instance).
+	* @return a List of RealVectors that are the corrected vector distances between each object's images in the channel pair being corrected.
+	*/
 	public java.util.List<RealVector> applyInSituAberrationCorrection(java.util.List<ImageObject> toCorrect, RealVector slopes) {
 		
 		int referenceChannel = this.parameters.getIntValueForKey(REF_CH_PARAM);
