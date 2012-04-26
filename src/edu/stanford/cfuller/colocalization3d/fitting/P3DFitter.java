@@ -36,6 +36,10 @@ import org.apache.commons.math3.linear.RealVector;
 
 import java.util.List;
 
+/**
+* A DistributionFitter that fits scalar observations to a P3D probability distibution.
+* @author Colin J. Fuller
+*/
 public class P3DFitter extends DistributionFitter {
 	
 	/**

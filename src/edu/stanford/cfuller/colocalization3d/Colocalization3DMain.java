@@ -72,7 +72,7 @@ public class Colocalization3DMain {
 	
 	static final String PRECOMPUTED_POS_PARAM = "precomputed_position_data";
 	static final String THREAD_COUNT_PARAM = "max_threads";
-	static final String DARK_IMAGE_PARAM = "darkfield_image"; //TODO: change this parameter's name
+	static final String DARK_IMAGE_PARAM = "darkcurrent_image";
 	static final String R2_PARAM = "residual_cutoff";
 	static final String MAX_LEVEL_PARAM = "max_greylevel_cutoff";
 	static final String DIST_CUTOFF_PARAM = "distance_cutoff";
@@ -174,9 +174,8 @@ public class Colocalization3DMain {
 			try {
 				ft.join(DEFAULT_THREAD_WAIT_MS);
 			} catch (InterruptedException e) {
-				/*
-					TODO log something
-				*/
+				java.util.logging.Logger.getLogger(LOGGER_NAME).severe("Interrupted while waiting for completion of fitting thread: " + e.getMessage());
+				
 			}
 			
 			if (! ft.isAlive()) {
@@ -237,9 +236,7 @@ public class Colocalization3DMain {
 					checkAllRunningThreadsAndRemoveFinished(startedThreads, finishedThreads);
 				}
 			} catch (InterruptedException e) {
-				/*
-					TODO log something
-				*/
+				java.util.logging.Logger.getLogger(LOGGER_NAME).severe("Interrupted while waiting for completion of fitting thread: " + e.getMessage());
 			}
 			
 			nextThread.start();
@@ -252,9 +249,7 @@ public class Colocalization3DMain {
 			try {
 				Thread.sleep(Colocalization3DMain.DEFAULT_THREAD_WAIT_MS);
 			} catch (InterruptedException e) {
-				/*
-					TODO log something
-				*/
+				java.util.logging.Logger.getLogger(LOGGER_NAME).severe("Interrupted while waiting for completion of fitting thread: " + e.getMessage());
 			}
 			checkAllRunningThreadsAndRemoveFinished(startedThreads, finishedThreads);
 		}
@@ -505,9 +500,7 @@ public class Colocalization3DMain {
 		try {
 			FileUtils.writeFittedImageObjectsToDisk(imageObjects, this.parameters);
 		} catch (java.io.IOException e) {
-			/*
-				TODO log something / do something
-			*/
+			java.util.logging.Logger.getLogger(LOGGER_NAME).severe("Exception encountered while writing image objects to disk: " + e.getMessage());
 		}
 		
 		
@@ -555,9 +548,7 @@ public class Colocalization3DMain {
 		try {
 			FileUtils.writeFittedImageObjectsToDisk(imageObjects, this.parameters);
 		} catch (java.io.IOException e) {
-			/*
-				TODO log something / do something
-			*/
+			java.util.logging.Logger.getLogger(LOGGER_NAME).severe("Exception encountered while writing image objects to disk: " + e.getMessage());
 		}
 						
 		//fit the distribution of separations

@@ -47,6 +47,12 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.XMLStreamWriter;
 
+
+/**
+* Utility methods for performing various tasks on the colocalization-related files.
+* 
+* @author Colin J. Fuller
+*/
 public class FileUtils {
 	
 	/**
@@ -153,7 +159,14 @@ public class FileUtils {
 	}
 	
 	
-
+	/**
+	* Reads the fitted position data stored in ImageObjects to be used for in situ cellular aberration correction
+	* @param p	a ParameterDictionary specifying the full path to the file containing the position data, as well as the base filenames of the
+	* 			datasets to be used for the correction
+	* @return a List<ImageObject> containing the ImageObjects (and their position fit data) to be used for the correction.
+	* @throws IOException              If the objects cannot be read from disk.
+	* @throws ClassNotFoundException   If the file does not contain data for ImageObjects in the correct format.
+	*/
 	public static List<ImageObject> readInSituAberrCorrPositionData(ParameterDictionary p) throws IOException, ClassNotFoundException {
 		
 		String[] filenames = FileUtils.getInSituAberrCorrPositionFilenames(p);

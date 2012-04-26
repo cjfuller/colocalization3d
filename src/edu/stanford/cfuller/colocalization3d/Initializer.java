@@ -32,6 +32,11 @@ import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+* Initializes the parameters needed for the colocalization analysis from a file, and sets up the
+* logging for the analysis.
+* @author Colin J. Fuller
+*/
 public class Initializer {
 	
 	/**

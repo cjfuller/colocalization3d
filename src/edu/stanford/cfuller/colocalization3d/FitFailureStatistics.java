@@ -26,6 +26,12 @@ package edu.stanford.cfuller.colocalization3d;
 
 import org.apache.commons.math3.linear.RealVector;
 
+/**
+* Keeps track of the reasons for throwing out ImageObjects being fit and provides
+* a means to print out a string representation.
+* 
+* @author Colin J. Fuller
+*/
 public class FitFailureStatistics {
 	
 	public final static int R2_FAIL = 0;
@@ -38,18 +44,34 @@ public class FitFailureStatistics {
 	
 	RealVector failCounts;
 	
+	/**
+	* Creates a new FitFailureStatistics object with all counts initialized to zero.
+	*/
 	public FitFailureStatistics() {
 		this.failCounts = new org.apache.commons.math3.linear.ArrayRealVector(n_reasons, 0.0);
 	}
 	
+	/**
+	* Increments the failure counter for a specific reason.
+	* @param reason an int specifying the reason for the failure.  This should be one of the declared static constants.
+	*/
 	public void addFailure(int reason) {
 		this.failCounts.setEntry(reason, this.failCounts.getEntry(reason)+1);
 	}
 	
+	/**
+	* Gets the failure counter for a specific reason.
+	* @param reason an int specifying the reason for the failure.  This should be one of the declared static constants.
+	* @return the number of failures for the specified reason.
+	*/
 	public int getFailureCount(int reason) {
 		return (int) this.failCounts.getEntry(reason);
 	}
 	
+	/**
+	* Gets a formatted string representation of the failures and the reasons.
+	* @return a String containing all the failure reasons and counts, one reason/count per line.
+	*/
 	public String toString() {
 		String result = "Objects on which fitting failed due to:\n";
 		result += "Edge proximity: " + this.getFailureCount(EDGE_FAIL) + "\n";

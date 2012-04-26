@@ -24,11 +24,20 @@
 
 package edu.stanford.cfuller.colocalization3d;
 
+/**
+* An object that keeps track of an Image and an associated Mask.
+* @author Colin J. Fuller
+*/
 public class ImageAndMaskSet {
 
 	String imageName;
 	String maskName;
 
+	/**
+	* Constructs a new ImageAndMaskSet with the specified filenames.
+	* @param image The absolute filename of the image.
+	* @param mask The absolute filename of the mask.
+	*/
 	public ImageAndMaskSet(String image, String mask) {
 		this.imageName = image;
 		this.maskName = mask;

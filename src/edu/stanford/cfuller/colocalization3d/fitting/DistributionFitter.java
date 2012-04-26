@@ -30,10 +30,19 @@ import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
 
 import org.apache.commons.math3.linear.RealVector;
 
+/**
+* Fits a set of scalar observations to some probability distribution.  
+* Subclasses handle particular distributions.
+* @author Colin J. Fuller
+*/
 public abstract class DistributionFitter {
 	
 	ParameterDictionary parameters;
 	
+	/**
+	* Constructs a new DistributionFitter
+	* @param p a ParameterDictionary containing any parameters required for the fitting (specific parameters are specified by subclasses).
+	*/
 	public DistributionFitter(ParameterDictionary p) {
 		this.parameters = p;
 	}
