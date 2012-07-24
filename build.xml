@@ -3,12 +3,14 @@
 	<property name="builddir" location="build"/>
 	<property name="distdir" location="dist"/>
 	<property name="docdir" location="doc"/>
-	<property name="IAT_libdir" location="${user.home}/git/ImageAnalysisTools/lib"/>
-	<property name="IAT_distdir" location="${user.home}/git/ImageAnalysisTools/dist"/>
-	<!--><property name="bootcp_jdk_1.6" location= "jdk_1.6/lib/classes.jar"/>-->
+	<property name="IAT_libdir" location="${user.home}/git/imageanalysistools/lib/standalone_only"/>
+	<property name="IAT_distdir" location="${user.home}/git/imageanalysistools/dist"/>
 	
 	<path id="Colocalization3D.classpath">
 		<fileset dir="${IAT_distdir}">
+			<include name="*.jar"/>
+		</fileset>
+		<fileset dir="${IAT_libdir}">
 			<include name="*.jar"/>
 		</fileset>
 	</path>
@@ -19,7 +21,6 @@
 	</target>
 	
 	<target name="compile" depends="initialize" description="compile the source">
-		<!--><javac target="1.6" source="1.6" srcdir="${srcdir}" destdir="${builddir}" bootclasspath="${bootcp_jdk_1.6}" debug="true" includeantruntime="false">-->
 		<javac srcdir="${srcdir}" destdir="${builddir}" debug="true" includeantruntime="false">
 
 			<classpath refid="Colocalization3D.classpath"/>
@@ -29,6 +30,7 @@
 	<target name="dist" depends="compile" description="build the jar file">
 		<jar jarfile="${distdir}/Colocalization3D.jar" basedir="build">
 			<zipgroupfileset dir="${IAT_distdir}" includes="*.jar"/>
+			<zipgroupfileset dir="${IAT_libdir}" includes="*.jar"/>
 			<manifest>
 				<attribute name="Main-Class" value="edu.stanford.cfuller.colocalization3d.Colocalization3DMain"/>
 			</manifest>
