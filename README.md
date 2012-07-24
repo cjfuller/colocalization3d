@@ -2,7 +2,7 @@
 
 Java implementation of three-dimensional high-resolution colocalization.
 
-Requires the [ImageAnalysisTools library](https://cjfuller.github.com/imageanalysistools).
+Requires the [ImageAnalysisTools library](http://cjfuller.github.com/imageanalysistools).
 
 ## Running
 
