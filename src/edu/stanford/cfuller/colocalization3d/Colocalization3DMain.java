@@ -40,9 +40,10 @@ import edu.stanford.cfuller.imageanalysistools.fitting.FitParameters;
 import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
 import edu.stanford.cfuller.imageanalysistools.image.Histogram;
 import edu.stanford.cfuller.imageanalysistools.image.Image;
+import edu.stanford.cfuller.imageanalysistools.image.WritableImage;
 import edu.stanford.cfuller.imageanalysistools.image.ImageCoordinate;
-import edu.stanford.cfuller.imageanalysistools.image.ReadOnlyImage;
-import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
+import edu.stanford.cfuller.imageanalysistools.image.ImageFactory;
+import edu.stanford.cfuller.imageanalysistools.meta.parameters.ParameterDictionary;
 
 import org.apache.commons.math3.linear.RealVector;
 
@@ -136,6 +137,8 @@ public class Colocalization3DMain {
 	
 		Image theImage = FileUtils.loadImage(toLoad.getImageFilename());
 		
+		WritableImage wrImage = ImageFactory.createWritable(theImage);
+		
 		if (this.parameters.hasKey(DARK_IMAGE_PARAM)) {
 			
 			Image dark = FileUtils.loadImage(this.parameters.getValueForKey(DARK_IMAGE_PARAM));
@@ -144,12 +147,13 @@ public class Colocalization3DMain {
 			
 			isf.setSubtractPlanarImage(true);
 			
+			
 			isf.setReferenceImage(dark);
-			isf.apply(theImage);
+			isf.apply(wrImage);
 			
 		}
 		
-		return theImage;
+		return wrImage;
 		
 	}
 	
@@ -224,7 +228,7 @@ public class Colocalization3DMain {
 		
 		for (int i = 1; i < maxRegionId + 1; i++) {
 		
-			ImageObject obj = new edu.stanford.cfuller.imageanalysistools.fitting.GaussianImageObject(i, new ReadOnlyImage(mask), new ReadOnlyImage(im), this.parameters);
+			ImageObject obj = new edu.stanford.cfuller.imageanalysistools.fitting.GaussianImageObject(i, ImageFactory.createShallow(mask), ImageFactory.createShallow(im), this.parameters);
 		
 			obj.setImageID(iams.getImageFilename());
 		

@@ -27,7 +27,7 @@ package edu.stanford.cfuller.colocalization3d.fitting;
 import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
 import edu.stanford.cfuller.imageanalysistools.fitting.NelderMeadMinimizer;
 import edu.stanford.cfuller.imageanalysistools.fitting.ObjectiveFunction;
-import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
+import edu.stanford.cfuller.imageanalysistools.meta.parameters.ParameterDictionary;
 
 import org.apache.commons.math3.exception.ConvergenceException;
 import org.apache.commons.math3.analysis.UnivariateFunction;
@@ -74,7 +74,7 @@ public class P3DFitter extends DistributionFitter {
 		
 		of.setR(diffs);
 		
-		final double tol = 1e-6;
+		final double tol = 1e-12;
 		
 		NelderMeadMinimizer nmm = new NelderMeadMinimizer(tol);
 		

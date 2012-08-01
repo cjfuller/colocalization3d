@@ -26,7 +26,7 @@ package edu.stanford.cfuller.colocalization3d.fitting;
 
 
 import edu.stanford.cfuller.imageanalysistools.fitting.ImageObject;
-import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
+import edu.stanford.cfuller.imageanalysistools.meta.parameters.ParameterDictionary;
 
 import org.apache.commons.math3.linear.RealVector;
 

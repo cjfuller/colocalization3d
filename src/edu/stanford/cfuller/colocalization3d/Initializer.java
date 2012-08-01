@@ -24,7 +24,10 @@
 
 package edu.stanford.cfuller.colocalization3d;
 
-import edu.stanford.cfuller.imageanalysistools.parameters.ParameterDictionary;
+import edu.stanford.cfuller.imageanalysistools.meta.parameters.ParameterDictionary;
+import edu.stanford.cfuller.imageanalysistools.meta.AnalysisMetadataParser;
+import edu.stanford.cfuller.imageanalysistools.meta.AnalysisMetadataParserFactory;
+
 
 import java.util.logging.Handler;
 import java.util.logging.ConsoleHandler;
@@ -82,7 +85,12 @@ public class Initializer {
 
 
 		if (cmdLineArgs != null && cmdLineArgs.length > 0) {
-			this.params = ParameterDictionary.readParametersFromFile(cmdLineArgs[0]);
+			
+			AnalysisMetadataParser amp = AnalysisMetadataParserFactory.createParserForFile(cmdLineArgs[0]);
+			
+			this.params = amp.parseFileToParameterDictionary(cmdLineArgs[0]);
+			
+			//this.params = ParameterDictionary.readParametersFromFile(cmdLineArgs[0]);
 		} else {
 			return initializeParameters();
 		}
