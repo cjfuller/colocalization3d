@@ -75,6 +75,7 @@ public class PositionCorrector {
 	static final String DET_CORR_PARAM = "determine_correction";
 	static final String THREAD_COUNT_PARAM = "max_threads";
 	static final String IN_SITU_ABERR_SECOND_CH_PARAM = "in_situ_aberr_corr_channel";
+	static final String INVERT_Z_PARAM = "inverted_z_axis";
 	
 
 	ParameterDictionary parameters;
@@ -344,6 +345,8 @@ public class PositionCorrector {
 		RealVector corr = c.correctPosition(obj.getPositionForChannel(referenceChannel).getEntry(0), obj.getPositionForChannel(referenceChannel).getEntry(1));
         boolean flip = this.parameters.getBooleanValueForKey("flip_channels_at_end");
         if (flip) corr.mapMultiplyToSelf(-1.0);
+		boolean invert_z = this.parameters.hasKeyAndTrue(INVERT_Z_PARAM);
+		if (invert_z) corr.setEntry(2, -1.0*corr.getEntry(2));
 		obj.applyCorrectionVectorToChannel(correctionChannel, corr);
         RealVector correctedVectorDiff = obj.getCorrectedVectorDifferenceBetweenChannels(referenceChannel, correctionChannel).ebeMultiply(this.pixelToDistanceConversions);
 		return correctedVectorDiff;

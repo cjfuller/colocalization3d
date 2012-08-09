@@ -338,7 +338,7 @@ public class Colocalization3DMain {
 		double eps = 0.1; // a little wiggle room
 		double cameraSizeX = obj.getParent().getDimensionSizes().get(ImageCoordinate.X);
 		double cameraSizeY = obj.getParent().getDimensionSizes().get(ImageCoordinate.Y);
-		double numplanes = this.parameters.getDoubleValueForKey(NUM_PLANES_PARAM);
+		double numplanes = obj.getParent().getDimensionSizes().get(ImageCoordinate.Z);//this.parameters.getDoubleValueForKey(NUM_PLANES_PARAM);
 		double imageBorderSize = this.parameters.getDoubleValueForKey(BORDER_PARAM);
 		double halfZSize = this.parameters.getDoubleValueForKey(Z_BOX_SIZE_PARAM);
 		
@@ -681,11 +681,15 @@ public class Colocalization3DMain {
             sbSingle.append(currObject.getPositionForChannel(c.getCorrectionChannelIndex()).getEntry(2));
             sbSingle.append(" ");
             RealVector corrPos = null;
+			RealVector modCorrection = correction;
             if (this.parameters.hasKeyAndTrue("flip_channels_at_end")) {
-            	corrPos = currObject.getPositionForChannel(c.getCorrectionChannelIndex()).add(correction);
-            } else {
-            	corrPos = currObject.getPositionForChannel(c.getCorrectionChannelIndex()).subtract(correction);
-            }
+				modCorrection = correction.mapMultiply(-1.0);
+            } 
+			if (this.parameters.hasKeyAndTrue("inverted_z_axis")) {
+				modCorrection = correction.mapMultiply(1.0);
+				modCorrection.setEntry(2, -1.0*modCorrection.getEntry(2));
+			}
+			corrPos = currObject.getPositionForChannel(c.getCorrectionChannelIndex()).subtract(modCorrection);
             sbSingle.append(corrPos.getEntry(0));
             sbSingle.append(" ");
             sbSingle.append(corrPos.getEntry(1));

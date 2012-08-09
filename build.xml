@@ -1,23 +1,33 @@
 <project name="Colocalization3D" default="dist" basedir=".">
-	<property name="srcdir" location="src"/>
-	<property name="builddir" location="build"/>
-	<property name="distdir" location="dist"/>
-	<property name="docdir" location="doc"/>
-	<property name="IAT_libdir" location="${user.home}/git/imageanalysistools/lib/standalone_only"/>
-	<property name="IAT_distdir" location="${user.home}/git/imageanalysistools/dist"/>
+	<property name="srcdir" value="src"/>
+	<property name="builddir" value="build"/>
+	<property name="distdir" value="dist"/>
+	<property name="docdir" value="doc"/>
+	<property name="IAT_libdir" value="lib"/>
+	<property name="relative_output_libdir" value="lib"/>
+	<property name="output_libdir" value="${distdir}/${relative_output_libdir}"/>
+	<property name="output_jar_name" value="${distdir}/Colocalization3D.jar"/>
 	
 	<path id="Colocalization3D.classpath">
-		<fileset dir="${IAT_distdir}">
-			<include name="*.jar"/>
-		</fileset>
 		<fileset dir="${IAT_libdir}">
 			<include name="*.jar"/>
 		</fileset>
 	</path>
 	
+	<manifestclasspath property="jar.classpath" jarfile="${output_jar_name}">
+		<classpath>
+			<fileset dir="${output_libdir}">
+				<include name="*.jar"/>
+			</fileset>
+		</classpath>
+	</manifestclasspath>
+	
+	
+	
 	<target name="initialize">
 		<mkdir dir="${builddir}"/>
 		<mkdir dir="${distdir}"/>
+		<mkdir dir="${output_libdir}"/>
 	</target>
 	
 	<target name="compile" depends="initialize" description="compile the source">
@@ -28,14 +38,24 @@
 	</target>
 	
 	<target name="dist" depends="compile" description="build the jar file">
-		<jar jarfile="${distdir}/Colocalization3D.jar" basedir="build">
-			<zipgroupfileset dir="${IAT_distdir}" includes="*.jar"/>
-			<zipgroupfileset dir="${IAT_libdir}" includes="*.jar"/>
+		
+		<copy todir="${output_libdir}">
+			<fileset dir="${IAT_libdir}">
+				<include name="*.jar"/>
+			</fileset>
+		</copy>
+		
+		<jar jarfile="${output_jar_name}" basedir="build">
+
 			<manifest>
 				<attribute name="Main-Class" value="edu.stanford.cfuller.colocalization3d.Colocalization3DMain"/>
+				<attribute name="Class-Path" value="${jar.classpath}"/>
 			</manifest>
 			
 		</jar>
+
+		
+		
 	</target>
 	
 	<target name="doc">
