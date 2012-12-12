@@ -126,6 +126,14 @@ public class Initializer {
 			h.setLevel(Level.INFO);
 			Logger.getLogger(Colocalization3DMain.LOGGER_NAME).setLevel(Level.INFO);
 		}
+		
+		Logger lgr = Logger.getLogger(Colocalization3DMain.LOGGER_NAME);
+
+		Handler[] hs = lgr.getHandlers();
+
+		for (Handler hOrig : hs) {
+		    lgr.removeHandler(hOrig);
+		}
 
 		Logger.getLogger(Colocalization3DMain.LOGGER_NAME).addHandler(h);
 		Logger.getLogger(Colocalization3DMain.LOGGER_NAME).setUseParentHandlers(false);

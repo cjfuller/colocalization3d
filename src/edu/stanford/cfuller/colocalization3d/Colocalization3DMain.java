@@ -578,7 +578,7 @@ public class Colocalization3DMain {
 			RealVector scalarDiffs = this.getScalarDifferencesFromVectorDifferences(vectorDiffs);
 			
 			RealVector corrFitParams = df.fit(imageObjects, scalarDiffs);
-			
+
 			
 			java.util.logging.Logger.getLogger(LOGGER_NAME).info("p3d fit parameters after in situ correction: " + corrFitParams.toString());
 			
