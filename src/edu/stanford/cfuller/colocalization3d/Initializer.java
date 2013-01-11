@@ -65,9 +65,9 @@ public class Initializer {
 
 		if (this.initialized) return this.params;
 
-		this.setUpLogHandler();
-		
 		this.params = ParameterDictionary.emptyDictionary();
+
+		this.setUpLogHandler();
 
 		this.initialized = true;
 
