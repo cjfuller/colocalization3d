@@ -10,7 +10,7 @@ The program is run from the command-line with an XML or ruby file (formatted acc
 
     java -jar Colocalization3D.jar /path/to/parameters.xml
 
-A sample parameters file, including annotations for the recommended/required parameters, and what they do is located in the downloads section.
+A sample parameters file, including annotations for the recommended/required parameters, and what they do is located in the [downloads](https://github.com/downloads/cjfuller/colocalization3d/colocalization3D_sample_annotated_parameters.rb).
 
 ## Building from source
 
